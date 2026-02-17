@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 WORKDIR /src
 
 # Copy solution and project files first (layer caching)
-COPY AtriumPM.sln .
+COPY AtriumPM.slnx .
 COPY src/Shared/AtriumPM.Shared/AtriumPM.Shared.csproj src/Shared/AtriumPM.Shared/
 COPY src/Services/Identity/AtriumPM.Identity.API/AtriumPM.Identity.API.csproj src/Services/Identity/AtriumPM.Identity.API/
 

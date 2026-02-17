@@ -2,8 +2,6 @@
 **/bin/
 **/.vs/
 **/TestResults/
-*.sln
-*.slnx
 *.csproj.user
 *.suo
 *.swp
