@@ -1,0 +1,10 @@
+# AtriumPM
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+*~
+.idea/
+*.sln.DotSettings.user
