@@ -7,5 +7,4 @@ namespace AtriumPM.Shared.Interfaces;
 /// </summary>
 public interface IMustHaveTenant
 {
-    Guid TenantId { get; set; }
 }

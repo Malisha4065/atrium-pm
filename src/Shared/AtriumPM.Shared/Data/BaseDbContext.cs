@@ -1,7 +1,6 @@
 using System.Linq.Expressions;
 using AtriumPM.Shared.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace AtriumPM.Shared.Data;
 
@@ -30,6 +29,12 @@ public abstract class BaseDbContext : DbContext
             if (!typeof(IMustHaveTenant).IsAssignableFrom(entityType.ClrType))
                 continue;
 
+            // Ensure TenantId exists in the EF model. If a CLR property exists,
+            // this maps it; otherwise it is created as a shadow property.
+            modelBuilder.Entity(entityType.ClrType)
+                .Property<Guid>("TenantId")
+                .IsRequired();
+
             // Add shadow properties for audit trail
             modelBuilder.Entity(entityType.ClrType)
                 .Property<DateTime>("CreatedDate")
@@ -44,9 +49,14 @@ public abstract class BaseDbContext : DbContext
                 .HasMaxLength(256)
                 .IsRequired(false);
 
-            // Apply global query filter: WHERE TenantId == currentTenantId
+            // Apply global query filter: WHERE EF.Property<Guid>(entity, "TenantId") == currentTenantId
             var parameter = Expression.Parameter(entityType.ClrType, "e");
-            var tenantIdProperty = Expression.Property(parameter, nameof(IMustHaveTenant.TenantId));
+            var tenantIdProperty = Expression.Call(
+                typeof(EF),
+                nameof(EF.Property),
+                new[] { typeof(Guid) },
+                parameter,
+                Expression.Constant("TenantId"));
             var tenantIdValue = Expression.Property(Expression.Constant(_tenantContext), nameof(ITenantContext.TenantId));
             var filter = Expression.Lambda(Expression.Equal(tenantIdProperty, tenantIdValue), parameter);
 
@@ -72,15 +82,19 @@ public abstract class BaseDbContext : DbContext
 
         foreach (var entry in ChangeTracker.Entries())
         {
-            if (entry.Entity is not IMustHaveTenant tenantEntity)
+            if (entry.Entity is not IMustHaveTenant)
                 continue;
 
             switch (entry.State)
             {
                 case EntityState.Added:
                     // Stamp tenant ID if not already set
-                    if (tenantEntity.TenantId == Guid.Empty && _tenantContext.IsResolved)
-                        tenantEntity.TenantId = _tenantContext.TenantId;
+                    if (_tenantContext.IsResolved)
+                    {
+                        var tenantProperty = entry.Property("TenantId");
+                        if (tenantProperty.CurrentValue is null || (Guid)tenantProperty.CurrentValue == Guid.Empty)
+                            tenantProperty.CurrentValue = _tenantContext.TenantId;
+                    }
 
                     entry.Property("CreatedDate").CurrentValue = now;
                     entry.Property("ModifiedDate").CurrentValue = now;
@@ -89,7 +103,7 @@ public abstract class BaseDbContext : DbContext
                 case EntityState.Modified:
                     entry.Property("ModifiedDate").CurrentValue = now;
                     // Prevent TenantId from being changed
-                    entry.Property(nameof(IMustHaveTenant.TenantId)).IsModified = false;
+                    entry.Property("TenantId").IsModified = false;
                     break;
             }
         }

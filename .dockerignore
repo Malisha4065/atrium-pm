@@ -1,0 +1,12 @@
+**/obj/
+**/bin/
+**/.vs/
+**/TestResults/
+*.sln
+*.slnx
+*.csproj.user
+*.suo
+*.swp
+*.log
+docker-compose.yml
+docker-compose.override.yml

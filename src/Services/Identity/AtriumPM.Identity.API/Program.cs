@@ -129,10 +129,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 app.UseAuthentication();
-app.UseAuthorization();
 
 // Multi-tenant middleware (after auth so JWT claims are available)
 app.UseMiddleware<TenantMiddleware>();
+app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/health");
