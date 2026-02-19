@@ -120,6 +120,25 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  # ── Maintenance API ─────────────────────────────
+  maintenance-api:
+    build:
+      context: .
+      dockerfile: src/Services/Maintenance/AtriumPM.Maintenance.API/Dockerfile
+    container_name: atriumpm-maintenance-api
+    ports:
+      - "5400:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__MaintenanceDb: "Server=sqlserver,1433;Database=AtriumPM_Maintenance;User Id=sa;Password=Your_Strong_Password_123;TrustServerCertificate=True;"
+      Jwt__Key: "AtriumPM-Super-Secret-JWT-Key-Must-Be-At-Least-32-Characters-Long!"
+      Jwt__Issuer: "AtriumPM.Identity"
+      Jwt__Audience: "AtriumPM.Services"
+      Jwt__ExpiryMinutes: "60"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
 volumes:
   sqlserver-data:
   redis-data:

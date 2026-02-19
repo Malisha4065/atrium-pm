@@ -10,6 +10,9 @@
   <Folder Name="/src/Services/Leasing/">
     <Project Path="src/Services/Leasing/AtriumPM.Leasing.API/AtriumPM.Leasing.API.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Maintenance/">
+    <Project Path="src/Services/Maintenance/AtriumPM.Maintenance.API/AtriumPM.Maintenance.API.csproj" />
+  </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/AtriumPM.Shared/AtriumPM.Shared.csproj" />
   </Folder>
