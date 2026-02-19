@@ -76,6 +76,28 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  # ── Property API ─────────────────────────────────
+  property-api:
+    build:
+      context: .
+      dockerfile: src/Services/Property/AtriumPM.Property.API/Dockerfile
+    container_name: atriumpm-property-api
+    ports:
+      - "5200:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__PropertyDb: "Server=sqlserver,1433;Database=AtriumPM_Property;User Id=sa;Password=Your_Strong_Password_123;TrustServerCertificate=True;"
+      ConnectionStrings__Redis: "redis:6379"
+      Jwt__Key: "AtriumPM-Super-Secret-JWT-Key-Must-Be-At-Least-32-Characters-Long!"
+      Jwt__Issuer: "AtriumPM.Identity"
+      Jwt__Audience: "AtriumPM.Services"
+      Jwt__ExpiryMinutes: "60"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   sqlserver-data:
   redis-data:

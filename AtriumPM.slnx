@@ -4,6 +4,9 @@
   <Folder Name="/src/Services/Identity/">
     <Project Path="src/Services/Identity/AtriumPM.Identity.API/AtriumPM.Identity.API.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Property/">
+    <Project Path="src/Services/Property/AtriumPM.Property.API/AtriumPM.Property.API.csproj" />
+  </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/AtriumPM.Shared/AtriumPM.Shared.csproj" />
   </Folder>
