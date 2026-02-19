@@ -13,6 +13,9 @@
   <Folder Name="/src/Services/Maintenance/">
     <Project Path="src/Services/Maintenance/AtriumPM.Maintenance.API/AtriumPM.Maintenance.API.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Billing/">
+    <Project Path="src/Services/Billing/AtriumPM.Billing.API/AtriumPM.Billing.API.csproj" />
+  </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/AtriumPM.Shared/AtriumPM.Shared.csproj" />
   </Folder>

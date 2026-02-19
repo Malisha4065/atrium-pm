@@ -139,6 +139,28 @@ services:
       sqlserver:
         condition: service_healthy
 
+  # ── Billing API ─────────────────────────────────
+  billing-api:
+    build:
+      context: .
+      dockerfile: src/Services/Billing/AtriumPM.Billing.API/Dockerfile
+    container_name: atriumpm-billing-api
+    ports:
+      - "5500:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__BillingDb: "Server=sqlserver,1433;Database=AtriumPM_Billing;User Id=sa;Password=Your_Strong_Password_123;TrustServerCertificate=True;"
+      ConnectionStrings__RabbitMq: "rabbitmq://rabbitmq"
+      Jwt__Key: "AtriumPM-Super-Secret-JWT-Key-Must-Be-At-Least-32-Characters-Long!"
+      Jwt__Issuer: "AtriumPM.Identity"
+      Jwt__Audience: "AtriumPM.Services"
+      Jwt__ExpiryMinutes: "60"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
 volumes:
   sqlserver-data:
   redis-data:

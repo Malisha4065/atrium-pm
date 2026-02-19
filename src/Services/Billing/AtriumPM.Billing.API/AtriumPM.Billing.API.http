@@ -1,0 +1,4 @@
+@AtriumPM.Billing.API_HostAddress = http://localhost:5283
+
+GET {{AtriumPM.Billing.API_HostAddress}}/weatherforecast/
+Accept: application/json
