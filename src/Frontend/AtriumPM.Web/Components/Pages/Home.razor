@@ -1,0 +1,341 @@
+﻿@page "/"
+@inject AtriumApiClient ApiClient
+@inject ApiSessionState Session
+
+<PageTitle>AtriumPM Workspace</PageTitle>
+
+<h1>AtriumPM Workspace</h1>
+<p>Tenant onboarding and end-to-end microservice workflow.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;">
+	<section class="card p-3">
+		<h3>Tenant Registration</h3>
+		<input @bind="registerTenant.Name" placeholder="Company name" class="form-control mb-2" />
+		<input @bind="registerTenant.SubDomain" placeholder="Subdomain" class="form-control mb-2" />
+		<input @bind="registerTenant.AdminEmail" placeholder="Admin email" class="form-control mb-2" />
+		<input @bind="registerTenant.AdminPassword" placeholder="Admin password" class="form-control mb-2" type="password" />
+		<input @bind="registerTenant.AdminFirstName" placeholder="Admin first name" class="form-control mb-2" />
+		<input @bind="registerTenant.AdminLastName" placeholder="Admin last name" class="form-control mb-2" />
+		<button class="btn btn-primary" @onclick="RegisterTenantAsync">Register Tenant</button>
+	</section>
+
+	<section class="card p-3">
+		<h3>Login</h3>
+		<input @bind="login.Email" placeholder="Email" class="form-control mb-2" />
+		<input @bind="login.Password" placeholder="Password" class="form-control mb-2" type="password" />
+		<input @bind="tenantIdText" placeholder="Tenant ID" class="form-control mb-2" />
+		<button class="btn btn-primary" @onclick="LoginAsync">Login</button>
+		<button class="btn btn-secondary ms-2" @onclick="ClearSession">Clear Session</button>
+		<div class="mt-2"><strong>Authenticated:</strong> @Session.IsAuthenticated</div>
+	</section>
+
+	<section class="card p-3">
+		<h3>Property</h3>
+		<input @bind="createBuilding.Address" placeholder="Building address" class="form-control mb-2" />
+		<button class="btn btn-primary" @onclick="CreateBuildingAsync">Create Building</button>
+		<div class="mt-2"><small>Latest Building ID: @buildingIdText</small></div>
+
+		<hr />
+		<input @bind="createUnit.BuildingIdText" placeholder="Building ID" class="form-control mb-2" />
+		<input @bind="createUnit.UnitNumber" placeholder="Unit number" class="form-control mb-2" type="number" />
+		<button class="btn btn-primary" @onclick="CreateUnitAsync">Create Unit</button>
+		<div class="mt-2"><small>Latest Unit ID: @unitIdText</small></div>
+	</section>
+
+	<section class="card p-3">
+		<h3>Leasing</h3>
+		<input @bind="createLease.UnitIdText" placeholder="Unit ID" class="form-control mb-2" />
+		<input @bind="createLease.StartDate" class="form-control mb-2" placeholder="2026-02-22T10:00" />
+		<input @bind="createLease.EndDate" class="form-control mb-2" placeholder="2027-02-22T10:00" />
+		<input @bind="createLease.ResidentName" placeholder="Resident name" class="form-control mb-2" />
+		<button class="btn btn-primary" @onclick="CreateLeaseAsync">Create Lease</button>
+		<div class="mt-2"><small>Latest Lease ID: @leaseIdText</small></div>
+	</section>
+
+	<section class="card p-3">
+		<h3>Maintenance</h3>
+		<input @bind="createTicket.UnitIdText" placeholder="Unit ID (optional)" class="form-control mb-2" />
+		<input @bind="createTicket.BuildingIdText" placeholder="Building ID (optional)" class="form-control mb-2" />
+		<input @bind="createTicket.Title" placeholder="Title" class="form-control mb-2" />
+		<input @bind="createTicket.Description" placeholder="Description" class="form-control mb-2" />
+		<input @bind="createTicket.Priority" placeholder="Priority (High/Medium/Low)" class="form-control mb-2" />
+		<button class="btn btn-primary" @onclick="CreateTicketAsync">Create Ticket</button>
+	</section>
+
+	<section class="card p-3">
+		<h3>Billing</h3>
+		<input @bind="createInvoice.LeaseIdText" placeholder="Lease ID" class="form-control mb-2" />
+		<input @bind="createInvoice.UnitIdText" placeholder="Unit ID" class="form-control mb-2" />
+		<input @bind="createInvoice.BaseAmount" placeholder="Base amount" class="form-control mb-2" type="number" step="0.01" />
+		<input @bind="createInvoice.DueDate" class="form-control mb-2" placeholder="2026-03-01T10:00" />
+		<button class="btn btn-primary" @onclick="CreateInvoiceAsync">Create Invoice</button>
+		<div class="mt-2"><small>Latest Invoice ID: @invoiceIdText</small></div>
+
+		<hr />
+		<input @bind="createPayment.InvoiceIdText" placeholder="Invoice ID" class="form-control mb-2" />
+		<input @bind="createPayment.Amount" placeholder="Amount" class="form-control mb-2" type="number" step="0.01" />
+		<input @bind="createPayment.Method" placeholder="Method (Card/Bank/Cash)" class="form-control mb-2" />
+		<input @bind="createPayment.PaidAt" class="form-control mb-2" placeholder="2026-02-22T10:00" />
+		<button class="btn btn-primary" @onclick="CreatePaymentAsync">Create Payment</button>
+
+		<hr />
+		<button class="btn btn-outline-primary" @onclick="LoadInvoicesAsync">Load Invoices</button>
+		<ul class="mt-2">
+			@foreach (var invoice in invoices)
+			{
+				<li>@invoice.Id - @invoice.Status - Paid: @invoice.PaidAmount</li>
+			}
+		</ul>
+	</section>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(statusMessage))
+{
+	<div class="alert alert-info mt-3">@statusMessage</div>
+}
+
+@code {
+	private RegisterTenantForm registerTenant = new();
+	private LoginForm login = new();
+	private string tenantIdText = string.Empty;
+
+	private CreateBuildingForm createBuilding = new();
+	private CreateUnitForm createUnit = new();
+	private CreateLeaseForm createLease = new();
+	private CreateTicketForm createTicket = new();
+	private CreateInvoiceForm createInvoice = new();
+	private CreatePaymentForm createPayment = new();
+
+	private List<InvoiceDto> invoices = new();
+	private string statusMessage = string.Empty;
+	private string buildingIdText = string.Empty;
+	private string unitIdText = string.Empty;
+	private string leaseIdText = string.Empty;
+	private string invoiceIdText = string.Empty;
+
+	private async Task RegisterTenantAsync()
+	{
+		await RunAsync(async () =>
+		{
+			var result = await ApiClient.RegisterTenantAsync(new RegisterTenantRequest(
+				registerTenant.Name,
+				registerTenant.SubDomain,
+				registerTenant.AdminEmail,
+				registerTenant.AdminPassword,
+				registerTenant.AdminFirstName,
+				registerTenant.AdminLastName));
+
+			tenantIdText = result.Id.ToString();
+			statusMessage = $"Tenant registered: {result.Id}";
+		});
+	}
+
+	private async Task LoginAsync()
+	{
+		await RunAsync(async () =>
+		{
+			var tenantId = ParseGuid(tenantIdText, "Tenant ID");
+			var token = await ApiClient.LoginAsync(new LoginRequest(login.Email, login.Password, tenantId));
+
+			Session.SetSession(tenantId, token.AccessToken, token.RefreshToken);
+			statusMessage = "Login successful.";
+		});
+	}
+
+	private void ClearSession()
+	{
+		Session.Clear();
+		statusMessage = "Session cleared.";
+	}
+
+	private async Task CreateBuildingAsync()
+	{
+		await RunAsync(async () =>
+		{
+			var result = await ApiClient.CreateBuildingAsync(new CreateBuildingRequest(createBuilding.Address));
+			buildingIdText = result.Id.ToString();
+			createUnit.BuildingIdText = buildingIdText;
+			statusMessage = $"Building created: {result.Id}";
+		});
+	}
+
+	private async Task CreateUnitAsync()
+	{
+		await RunAsync(async () =>
+		{
+			var buildingId = ParseGuid(createUnit.BuildingIdText, "Building ID");
+			var result = await ApiClient.CreateUnitAsync(new CreateUnitRequest(buildingId, createUnit.UnitNumber));
+			unitIdText = result.Id.ToString();
+			createLease.UnitIdText = unitIdText;
+			statusMessage = $"Unit created: {result.Id}";
+		});
+	}
+
+	private async Task CreateLeaseAsync()
+	{
+		await RunAsync(async () =>
+		{
+			var unitId = ParseGuid(createLease.UnitIdText, "Unit ID");
+			var result = await ApiClient.CreateLeaseAsync(new CreateLeaseRequest(
+				unitId,
+				ParseDateTime(createLease.StartDate, "Lease start date"),
+				string.IsNullOrWhiteSpace(createLease.EndDate) ? null : ParseDateTime(createLease.EndDate, "Lease end date"),
+				createLease.ResidentName));
+
+			leaseIdText = result.Id.ToString();
+			createInvoice.LeaseIdText = leaseIdText;
+			createInvoice.UnitIdText = unitId.ToString();
+			statusMessage = $"Lease created: {result.Id}";
+		});
+	}
+
+	private async Task CreateTicketAsync()
+	{
+		await RunAsync(async () =>
+		{
+			Guid? unitId = string.IsNullOrWhiteSpace(createTicket.UnitIdText) ? null : ParseGuid(createTicket.UnitIdText, "Unit ID");
+			Guid? buildingId = string.IsNullOrWhiteSpace(createTicket.BuildingIdText) ? null : ParseGuid(createTicket.BuildingIdText, "Building ID");
+
+			var result = await ApiClient.CreateTicketAsync(new CreateMaintenanceTicketRequest(
+				unitId,
+				buildingId,
+				createTicket.Title,
+				createTicket.Description,
+				createTicket.Priority));
+
+			statusMessage = $"Ticket created: {result.Id}";
+		});
+	}
+
+	private async Task CreateInvoiceAsync()
+	{
+		await RunAsync(async () =>
+		{
+			var leaseId = ParseGuid(createInvoice.LeaseIdText, "Lease ID");
+			var unitId = ParseGuid(createInvoice.UnitIdText, "Unit ID");
+
+			var result = await ApiClient.CreateInvoiceAsync(new CreateInvoiceRequest(
+				leaseId,
+				unitId,
+				createInvoice.BaseAmount,
+				ParseDateTime(createInvoice.DueDate, "Due date")));
+
+			invoiceIdText = result.Id.ToString();
+			createPayment.InvoiceIdText = invoiceIdText;
+			statusMessage = $"Invoice created: {result.Id}";
+		});
+	}
+
+	private async Task CreatePaymentAsync()
+	{
+		await RunAsync(async () =>
+		{
+			var invoiceId = ParseGuid(createPayment.InvoiceIdText, "Invoice ID");
+
+			var result = await ApiClient.CreatePaymentAsync(new CreatePaymentRequest(
+				invoiceId,
+				createPayment.Amount,
+				createPayment.Method,
+				ParseDateTime(createPayment.PaidAt, "Paid date")));
+
+			statusMessage = $"Payment recorded: {result.Id}";
+		});
+	}
+
+	private async Task LoadInvoicesAsync()
+	{
+		await RunAsync(async () =>
+		{
+			invoices = (await ApiClient.GetInvoicesAsync()).ToList();
+			statusMessage = $"Loaded {invoices.Count} invoice(s).";
+		});
+	}
+
+	private async Task RunAsync(Func<Task> action)
+	{
+		try
+		{
+			await action();
+		}
+		catch (Exception ex)
+		{
+			statusMessage = ex.Message;
+		}
+	}
+
+	private static Guid ParseGuid(string value, string field)
+	{
+		if (!Guid.TryParse(value, out var guid))
+			throw new InvalidOperationException($"{field} is not a valid GUID.");
+
+		return guid;
+	}
+
+	private static DateTime ParseDateTime(string value, string field)
+	{
+		if (!DateTime.TryParse(value, out var dateTime))
+			throw new InvalidOperationException($"{field} is not a valid date/time.");
+
+		return dateTime;
+	}
+
+	private class RegisterTenantForm
+	{
+		public string Name { get; set; } = "Atrium Tenant";
+		public string SubDomain { get; set; } = $"tenant-{DateTime.UtcNow:HHmmss}";
+		public string AdminEmail { get; set; } = "admin@tenant.com";
+		public string AdminPassword { get; set; } = "Password123!";
+		public string AdminFirstName { get; set; } = "Admin";
+		public string AdminLastName { get; set; } = "User";
+	}
+
+	private class LoginForm
+	{
+		public string Email { get; set; } = "admin@tenant.com";
+		public string Password { get; set; } = "Password123!";
+	}
+
+	private class CreateBuildingForm
+	{
+		public string Address { get; set; } = "123 Main St";
+	}
+
+	private class CreateUnitForm
+	{
+		public string BuildingIdText { get; set; } = string.Empty;
+		public int UnitNumber { get; set; } = 101;
+	}
+
+	private class CreateLeaseForm
+	{
+		public string UnitIdText { get; set; } = string.Empty;
+		public string StartDate { get; set; } = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm");
+		public string EndDate { get; set; } = DateTime.UtcNow.AddMonths(12).ToString("yyyy-MM-ddTHH:mm");
+		public string ResidentName { get; set; } = "John Resident";
+	}
+
+	private class CreateTicketForm
+	{
+		public string UnitIdText { get; set; } = string.Empty;
+		public string BuildingIdText { get; set; } = string.Empty;
+		public string Title { get; set; } = "Maintenance request";
+		public string Description { get; set; } = "Leaking faucet in kitchen";
+		public string Priority { get; set; } = "High";
+	}
+
+	private class CreateInvoiceForm
+	{
+		public string LeaseIdText { get; set; } = string.Empty;
+		public string UnitIdText { get; set; } = string.Empty;
+		public decimal BaseAmount { get; set; } = 1200m;
+		public string DueDate { get; set; } = DateTime.UtcNow.AddDays(7).ToString("yyyy-MM-ddTHH:mm");
+	}
+
+	private class CreatePaymentForm
+	{
+		public string InvoiceIdText { get; set; } = string.Empty;
+		public decimal Amount { get; set; } = 1200m;
+		public string Method { get; set; } = "Card";
+		public string PaidAt { get; set; } = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm");
+	}
+}

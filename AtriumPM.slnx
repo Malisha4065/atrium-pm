@@ -1,5 +1,8 @@
 <Solution>
   <Folder Name="/src/" />
+  <Folder Name="/src/Frontend/">
+    <Project Path="src/Frontend/AtriumPM.Web/AtriumPM.Web.csproj" />
+  </Folder>
   <Folder Name="/src/Services/" />
   <Folder Name="/src/Services/Identity/">
     <Project Path="src/Services/Identity/AtriumPM.Identity.API/AtriumPM.Identity.API.csproj" />
