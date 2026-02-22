@@ -1,5 +1,7 @@
 **/obj/
 **/bin/
+**/bin\\*/
+**/obj\\*/
 **/.vs/
 **/TestResults/
 *.csproj.user

@@ -10,9 +10,10 @@ COPY src/Services/Identity/AtriumPM.Identity.API/AtriumPM.Identity.API.csproj sr
 RUN dotnet restore src/Services/Identity/AtriumPM.Identity.API/AtriumPM.Identity.API.csproj
 
 # Copy everything and build
-COPY . .
+COPY src/Shared/AtriumPM.Shared/ src/Shared/AtriumPM.Shared/
+COPY src/Services/Identity/AtriumPM.Identity.API/ src/Services/Identity/AtriumPM.Identity.API/
 RUN dotnet publish src/Services/Identity/AtriumPM.Identity.API/AtriumPM.Identity.API.csproj \
-    -c Release -o /app/publish --no-restore
+    -c Release -o /app/publish
 
 # ── Runtime Stage ─────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
