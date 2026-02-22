@@ -1,6 +1,8 @@
 # AtriumPM
 bin/
 obj/
+**/bin\\Debug/
+**/obj\\Debug/
 *.user
 *.suo
 .vs/
