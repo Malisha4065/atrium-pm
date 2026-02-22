@@ -11,11 +11,12 @@
     --danger: #ef4444;
 }
 
-html, body {
+html,
+body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-main);
-    background-image: 
+    background-image:
         radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.15), transparent 25%),
         radial-gradient(circle at 85% 30%, rgba(14, 165, 233, 0.15), transparent 25%);
     background-attachment: fixed;
@@ -56,7 +57,27 @@ html, body {
 }
 
 .form-control::placeholder {
-    color: var(--text-muted) !important;
+    color: var(--text-muted);
+    /* Removed !important to allow form-floating to hide it */
+}
+
+/* Fix for floating labels */
+.form-floating>.form-control::placeholder {
+    color: transparent;
+}
+
+.form-floating>.form-control:focus::placeholder {
+    color: var(--text-muted);
+}
+
+.form-floating>label {
+    color: var(--text-muted);
+}
+
+.form-floating>.form-control:focus~label,
+.form-floating>.form-control:not(:placeholder-shown)~label,
+.form-floating>.form-select~label {
+    color: var(--primary);
 }
 
 /* Base Buttons */
@@ -97,13 +118,15 @@ html, body {
     box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
 }
 
-.btn-secondary, .btn-outline-secondary {
+.btn-secondary,
+.btn-outline-secondary {
     color: var(--text-main);
     border-color: var(--card-border);
     background: rgba(255, 255, 255, 0.05);
 }
 
-.btn-secondary:hover:not(:disabled), .btn-outline-secondary:hover:not(:disabled) {
+.btn-secondary:hover:not(:disabled),
+.btn-outline-secondary:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.1);
     color: white;
     transform: translateY(-1px);
@@ -143,7 +166,12 @@ html, body {
 }
 
 /* Headings & Text */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-weight: 600;
     letter-spacing: -0.025em;
     color: var(--text-main);
@@ -209,8 +237,13 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Spinners & Animations */
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .spinner-icon {
@@ -225,17 +258,34 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: repeat(12, 1fr);
 }
 
-.col-span-12 { grid-column: span 12; }
-.col-span-8 { grid-column: span 8; }
-.col-span-4 { grid-column: span 4; }
-.col-span-6 { grid-column: span 6; }
+.col-span-12 {
+    grid-column: span 12;
+}
+
+.col-span-8 {
+    grid-column: span 8;
+}
+
+.col-span-4 {
+    grid-column: span 4;
+}
+
+.col-span-6 {
+    grid-column: span 6;
+}
 
 @media (max-width: 992px) {
-    .col-span-8, .col-span-4 { grid-column: span 12; }
+
+    .col-span-8,
+    .col-span-4 {
+        grid-column: span 12;
+    }
 }
 
 @media (max-width: 1200px) {
-    .col-span-6 { grid-column: span 12; }
+    .col-span-6 {
+        grid-column: span 12;
+    }
 }
 
 /* Step marker */
