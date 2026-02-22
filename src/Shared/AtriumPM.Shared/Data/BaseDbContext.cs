@@ -13,6 +13,7 @@ namespace AtriumPM.Shared.Data;
 public abstract class BaseDbContext : DbContext
 {
     private readonly ITenantContext _tenantContext;
+    protected Guid CurrentTenantId => _tenantContext.TenantId;
 
     protected BaseDbContext(DbContextOptions options, ITenantContext tenantContext)
         : base(options)
@@ -57,7 +58,7 @@ public abstract class BaseDbContext : DbContext
                 new[] { typeof(Guid) },
                 parameter,
                 Expression.Constant("TenantId"));
-            var tenantIdValue = Expression.Property(Expression.Constant(_tenantContext), nameof(ITenantContext.TenantId));
+            var tenantIdValue = Expression.Property(Expression.Constant(this), nameof(CurrentTenantId));
             var filter = Expression.Lambda(Expression.Equal(tenantIdProperty, tenantIdValue), parameter);
 
             modelBuilder.Entity(entityType.ClrType).HasQueryFilter(filter);
