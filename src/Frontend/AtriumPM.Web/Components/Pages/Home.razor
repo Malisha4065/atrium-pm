@@ -2,99 +2,183 @@
 @inject AtriumApiClient ApiClient
 @inject ApiSessionState Session
 
-<PageTitle>AtriumPM Workspace</PageTitle>
+<PageTitle>AtriumPM Dashboard</PageTitle>
 
-<h1>AtriumPM Workspace</h1>
-<p>Tenant onboarding and end-to-end microservice workflow.</p>
+<div class="container-fluid px-0">
+	<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+		<div>
+			<h1 class="mb-1">AtriumPM Dashboard</h1>
+			<p class="text-muted mb-0">Follow the guided setup to onboard a tenant and run the full property workflow.</p>
+		</div>
+		<div>
+			<button class="btn btn-outline-primary" @onclick="RefreshServiceStatusAsync" disabled="@isBusy">Refresh Service Status</button>
+		</div>
+	</div>
 
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;">
-	<section class="card p-3">
-		<h3>Tenant Registration</h3>
-		<input @bind="registerTenant.Name" placeholder="Company name" class="form-control mb-2" />
-		<input @bind="registerTenant.SubDomain" placeholder="Subdomain" class="form-control mb-2" />
-		<input @bind="registerTenant.AdminEmail" placeholder="Admin email" class="form-control mb-2" />
-		<input @bind="registerTenant.AdminPassword" placeholder="Admin password" class="form-control mb-2" type="password" />
-		<input @bind="registerTenant.AdminFirstName" placeholder="Admin first name" class="form-control mb-2" />
-		<input @bind="registerTenant.AdminLastName" placeholder="Admin last name" class="form-control mb-2" />
-		<button class="btn btn-primary" @onclick="RegisterTenantAsync">Register Tenant</button>
-	</section>
+	@if (!string.IsNullOrWhiteSpace(statusMessage))
+	{
+		<div class="alert @(isError ? "alert-danger" : "alert-success")">@statusMessage</div>
+	}
 
-	<section class="card p-3">
-		<h3>Login</h3>
-		<input @bind="login.Email" placeholder="Email" class="form-control mb-2" />
-		<input @bind="login.Password" placeholder="Password" class="form-control mb-2" type="password" />
-		<input @bind="tenantIdText" placeholder="Tenant ID" class="form-control mb-2" />
-		<button class="btn btn-primary" @onclick="LoginAsync">Login</button>
-		<button class="btn btn-secondary ms-2" @onclick="ClearSession">Clear Session</button>
-		<div class="mt-2"><strong>Authenticated:</strong> @Session.IsAuthenticated</div>
-	</section>
+	<div class="row g-3 mb-3">
+		<div class="col-lg-8">
+			<div class="card p-3 h-100">
+				<h5 class="mb-2">Progress</h5>
+				<div class="progress mb-3" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@progressPercent">
+					<div class="progress-bar" style="width:@($"{progressPercent}%")">@progressPercent%</div>
+				</div>
+				<div class="d-flex flex-wrap gap-2">
+					<span class="badge @(HasTenant ? "text-bg-success" : "text-bg-secondary")">1. Tenant</span>
+					<span class="badge @(Session.IsAuthenticated ? "text-bg-success" : "text-bg-secondary")">2. Login</span>
+					<span class="badge @(!string.IsNullOrWhiteSpace(buildingIdText) ? "text-bg-success" : "text-bg-secondary")">3. Building</span>
+					<span class="badge @(!string.IsNullOrWhiteSpace(unitIdText) ? "text-bg-success" : "text-bg-secondary")">4. Unit</span>
+					<span class="badge @(!string.IsNullOrWhiteSpace(leaseIdText) ? "text-bg-success" : "text-bg-secondary")">5. Lease</span>
+					<span class="badge @(!string.IsNullOrWhiteSpace(invoiceIdText) ? "text-bg-success" : "text-bg-secondary")">6. Invoice</span>
+				</div>
+			</div>
+		</div>
+		<div class="col-lg-4">
+			<div class="card p-3 h-100">
+				<h5 class="mb-3">Service Status</h5>
+				@if (serviceStatuses.Count == 0)
+				{
+					<div class="text-muted">No status data yet.</div>
+				}
+				else
+				{
+					@foreach (var status in serviceStatuses)
+					{
+						<div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+							<div>
+								<div class="fw-semibold">@status.Name</div>
+								<div class="small text-muted">@status.Url</div>
+							</div>
+							<span class="badge @(status.IsReachable ? "text-bg-success" : "text-bg-danger")">@(status.IsReachable ? "Up" : "Down")</span>
+						</div>
+					}
+				}
+			</div>
+		</div>
+	</div>
 
-	<section class="card p-3">
-		<h3>Property</h3>
-		<input @bind="createBuilding.Address" placeholder="Building address" class="form-control mb-2" />
-		<button class="btn btn-primary" @onclick="CreateBuildingAsync">Create Building</button>
-		<div class="mt-2"><small>Latest Building ID: @buildingIdText</small></div>
+	<div class="row g-3">
+		<div class="col-xl-6">
+			<section class="card p-3 h-100">
+				<h5>Step 1: Register Tenant</h5>
+				<input @bind="registerTenant.Name" placeholder="Company name" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="registerTenant.SubDomain" placeholder="Subdomain" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="registerTenant.AdminEmail" placeholder="Admin email" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="registerTenant.AdminPassword" placeholder="Admin password" class="form-control mb-2" type="password" disabled="@isBusy" />
+				<input @bind="registerTenant.AdminFirstName" placeholder="Admin first name" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="registerTenant.AdminLastName" placeholder="Admin last name" class="form-control mb-2" disabled="@isBusy" />
+				<button class="btn btn-primary" @onclick="RegisterTenantAsync" disabled="@isBusy">Register Tenant</button>
+				<div class="small text-muted mt-2">Tenant ID: @(string.IsNullOrWhiteSpace(tenantIdText) ? "Not created" : tenantIdText)</div>
+			</section>
+		</div>
 
-		<hr />
-		<input @bind="createUnit.BuildingIdText" placeholder="Building ID" class="form-control mb-2" />
-		<input @bind="createUnit.UnitNumber" placeholder="Unit number" class="form-control mb-2" type="number" />
-		<button class="btn btn-primary" @onclick="CreateUnitAsync">Create Unit</button>
-		<div class="mt-2"><small>Latest Unit ID: @unitIdText</small></div>
-	</section>
+		<div class="col-xl-6">
+			<section class="card p-3 h-100">
+				<h5>Step 2: Login Session</h5>
+				<input @bind="login.Email" placeholder="Email" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="login.Password" placeholder="Password" class="form-control mb-2" type="password" disabled="@isBusy" />
+				<input @bind="tenantIdText" placeholder="Tenant ID" class="form-control mb-2" disabled="@isBusy" />
+				<div class="d-flex gap-2">
+					<button class="btn btn-primary" @onclick="LoginAsync" disabled="@isBusy || !HasTenant">Login</button>
+					<button class="btn btn-outline-secondary" @onclick="ClearSession" disabled="@isBusy">Clear Session</button>
+				</div>
+				<div class="small mt-2"><strong>Authenticated:</strong> @Session.IsAuthenticated</div>
+			</section>
+		</div>
 
-	<section class="card p-3">
-		<h3>Leasing</h3>
-		<input @bind="createLease.UnitIdText" placeholder="Unit ID" class="form-control mb-2" />
-		<input @bind="createLease.StartDate" class="form-control mb-2" placeholder="2026-02-22T10:00" />
-		<input @bind="createLease.EndDate" class="form-control mb-2" placeholder="2027-02-22T10:00" />
-		<input @bind="createLease.ResidentName" placeholder="Resident name" class="form-control mb-2" />
-		<button class="btn btn-primary" @onclick="CreateLeaseAsync">Create Lease</button>
-		<div class="mt-2"><small>Latest Lease ID: @leaseIdText</small></div>
-	</section>
+		<div class="col-xl-6">
+			<section class="card p-3 h-100">
+				<h5>Step 3-4: Property Setup</h5>
+				<input @bind="createBuilding.Address" placeholder="Building address" class="form-control mb-2" disabled="@isBusy" />
+				<button class="btn btn-primary mb-3" @onclick="CreateBuildingAsync" disabled="@isBusy || !Session.IsAuthenticated">Create Building</button>
 
-	<section class="card p-3">
-		<h3>Maintenance</h3>
-		<input @bind="createTicket.UnitIdText" placeholder="Unit ID (optional)" class="form-control mb-2" />
-		<input @bind="createTicket.BuildingIdText" placeholder="Building ID (optional)" class="form-control mb-2" />
-		<input @bind="createTicket.Title" placeholder="Title" class="form-control mb-2" />
-		<input @bind="createTicket.Description" placeholder="Description" class="form-control mb-2" />
-		<input @bind="createTicket.Priority" placeholder="Priority (High/Medium/Low)" class="form-control mb-2" />
-		<button class="btn btn-primary" @onclick="CreateTicketAsync">Create Ticket</button>
-	</section>
+				<input @bind="createUnit.BuildingIdText" placeholder="Building ID" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="createUnit.UnitNumber" placeholder="Unit number" class="form-control mb-2" type="number" disabled="@isBusy" />
+				<button class="btn btn-primary" @onclick="CreateUnitAsync" disabled="@isBusy || string.IsNullOrWhiteSpace(createUnit.BuildingIdText)">Create Unit</button>
 
-	<section class="card p-3">
-		<h3>Billing</h3>
-		<input @bind="createInvoice.LeaseIdText" placeholder="Lease ID" class="form-control mb-2" />
-		<input @bind="createInvoice.UnitIdText" placeholder="Unit ID" class="form-control mb-2" />
-		<input @bind="createInvoice.BaseAmount" placeholder="Base amount" class="form-control mb-2" type="number" step="0.01" />
-		<input @bind="createInvoice.DueDate" class="form-control mb-2" placeholder="2026-03-01T10:00" />
-		<button class="btn btn-primary" @onclick="CreateInvoiceAsync">Create Invoice</button>
-		<div class="mt-2"><small>Latest Invoice ID: @invoiceIdText</small></div>
+				<div class="small text-muted mt-2">Building ID: @(string.IsNullOrWhiteSpace(buildingIdText) ? "Not created" : buildingIdText)</div>
+				<div class="small text-muted">Unit ID: @(string.IsNullOrWhiteSpace(unitIdText) ? "Not created" : unitIdText)</div>
+			</section>
+		</div>
 
-		<hr />
-		<input @bind="createPayment.InvoiceIdText" placeholder="Invoice ID" class="form-control mb-2" />
-		<input @bind="createPayment.Amount" placeholder="Amount" class="form-control mb-2" type="number" step="0.01" />
-		<input @bind="createPayment.Method" placeholder="Method (Card/Bank/Cash)" class="form-control mb-2" />
-		<input @bind="createPayment.PaidAt" class="form-control mb-2" placeholder="2026-02-22T10:00" />
-		<button class="btn btn-primary" @onclick="CreatePaymentAsync">Create Payment</button>
+		<div class="col-xl-6">
+			<section class="card p-3 h-100">
+				<h5>Step 5: Create Lease</h5>
+				<input @bind="createLease.UnitIdText" placeholder="Unit ID" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="createLease.StartDate" class="form-control mb-2" placeholder="2026-02-22T10:00" disabled="@isBusy" />
+				<input @bind="createLease.EndDate" class="form-control mb-2" placeholder="2027-02-22T10:00" disabled="@isBusy" />
+				<input @bind="createLease.ResidentName" placeholder="Resident name" class="form-control mb-2" disabled="@isBusy" />
+				<button class="btn btn-primary" @onclick="CreateLeaseAsync" disabled="@isBusy || string.IsNullOrWhiteSpace(createLease.UnitIdText)">Create Lease</button>
+				<div class="small text-muted mt-2">Lease ID: @(string.IsNullOrWhiteSpace(leaseIdText) ? "Not created" : leaseIdText)</div>
+			</section>
+		</div>
 
-		<hr />
-		<button class="btn btn-outline-primary" @onclick="LoadInvoicesAsync">Load Invoices</button>
-		<ul class="mt-2">
-			@foreach (var invoice in invoices)
-			{
-				<li>@invoice.Id - @invoice.Status - Paid: @invoice.PaidAmount</li>
-			}
-		</ul>
-	</section>
+		<div class="col-xl-6">
+			<section class="card p-3 h-100">
+				<h5>Optional: Maintenance Ticket</h5>
+				<input @bind="createTicket.UnitIdText" placeholder="Unit ID (optional)" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="createTicket.BuildingIdText" placeholder="Building ID (optional)" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="createTicket.Title" placeholder="Title" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="createTicket.Description" placeholder="Description" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="createTicket.Priority" placeholder="Priority (High/Medium/Low)" class="form-control mb-2" disabled="@isBusy" />
+				<button class="btn btn-outline-primary" @onclick="CreateTicketAsync" disabled="@isBusy || !Session.IsAuthenticated">Create Ticket</button>
+			</section>
+		</div>
+
+		<div class="col-xl-6">
+			<section class="card p-3 h-100">
+				<h5>Step 6: Billing</h5>
+				<input @bind="createInvoice.LeaseIdText" placeholder="Lease ID" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="createInvoice.UnitIdText" placeholder="Unit ID" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="createInvoice.BaseAmount" placeholder="Base amount" class="form-control mb-2" type="number" step="0.01" disabled="@isBusy" />
+				<input @bind="createInvoice.DueDate" class="form-control mb-2" placeholder="2026-03-01T10:00" disabled="@isBusy" />
+				<button class="btn btn-primary mb-3" @onclick="CreateInvoiceAsync" disabled="@isBusy || string.IsNullOrWhiteSpace(createInvoice.LeaseIdText)">Create Invoice</button>
+
+				<input @bind="createPayment.InvoiceIdText" placeholder="Invoice ID" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="createPayment.Amount" placeholder="Amount" class="form-control mb-2" type="number" step="0.01" disabled="@isBusy" />
+				<input @bind="createPayment.Method" placeholder="Method (Card/Bank/Cash)" class="form-control mb-2" disabled="@isBusy" />
+				<input @bind="createPayment.PaidAt" class="form-control mb-2" placeholder="2026-02-22T10:00" disabled="@isBusy" />
+				<div class="d-flex flex-wrap gap-2">
+					<button class="btn btn-outline-primary" @onclick="CreatePaymentAsync" disabled="@isBusy || string.IsNullOrWhiteSpace(createPayment.InvoiceIdText)">Record Payment</button>
+					<button class="btn btn-outline-secondary" @onclick="LoadInvoicesAsync" disabled="@isBusy || !Session.IsAuthenticated">Load Invoices</button>
+				</div>
+
+				<div class="small text-muted mt-2">Invoice ID: @(string.IsNullOrWhiteSpace(invoiceIdText) ? "Not created" : invoiceIdText)</div>
+				@if (invoices.Count > 0)
+				{
+					<div class="table-responsive mt-2">
+						<table class="table table-sm mb-0">
+							<thead>
+								<tr>
+									<th>ID</th>
+									<th>Status</th>
+									<th>Paid</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (var invoice in invoices)
+								{
+									<tr>
+										<td>@invoice.Id</td>
+										<td>@invoice.Status</td>
+										<td>@invoice.PaidAmount</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</section>
+		</div>
+	</div>
 </div>
 
-@if (!string.IsNullOrWhiteSpace(statusMessage))
-{
-	<div class="alert alert-info mt-3">@statusMessage</div>
-}
-
 @code {
+	private IReadOnlyList<ServiceStatus> serviceStatuses = Array.Empty<ServiceStatus>();
 	private RegisterTenantForm registerTenant = new();
 	private LoginForm login = new();
 	private string tenantIdText = string.Empty;
@@ -108,15 +192,55 @@
 
 	private List<InvoiceDto> invoices = new();
 	private string statusMessage = string.Empty;
+	private bool isError;
+	private bool isBusy;
 	private string buildingIdText = string.Empty;
 	private string unitIdText = string.Empty;
 	private string leaseIdText = string.Empty;
 	private string invoiceIdText = string.Empty;
 
+	private bool HasTenant => !string.IsNullOrWhiteSpace(tenantIdText);
+	private int progressPercent
+	{
+		get
+		{
+			var complete = 0;
+			if (HasTenant) complete++;
+			if (Session.IsAuthenticated) complete++;
+			if (!string.IsNullOrWhiteSpace(buildingIdText)) complete++;
+			if (!string.IsNullOrWhiteSpace(unitIdText)) complete++;
+			if (!string.IsNullOrWhiteSpace(leaseIdText)) complete++;
+			if (!string.IsNullOrWhiteSpace(invoiceIdText)) complete++;
+
+			return (int)Math.Round((complete / 6d) * 100);
+		}
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		await RefreshServiceStatusAsync();
+	}
+
+	private async Task RefreshServiceStatusAsync()
+	{
+		await RunAsync(async () =>
+		{
+			serviceStatuses = await ApiClient.GetServiceStatusesAsync();
+			SetSuccess("Service status refreshed.");
+		});
+	}
+
 	private async Task RegisterTenantAsync()
 	{
 		await RunAsync(async () =>
 		{
+			RequireValue(registerTenant.Name, "Company name");
+			RequireValue(registerTenant.SubDomain, "Subdomain");
+			RequireValue(registerTenant.AdminEmail, "Admin email");
+			RequireValue(registerTenant.AdminPassword, "Admin password");
+			RequireValue(registerTenant.AdminFirstName, "Admin first name");
+			RequireValue(registerTenant.AdminLastName, "Admin last name");
+
 			var result = await ApiClient.RegisterTenantAsync(new RegisterTenantRequest(
 				registerTenant.Name,
 				registerTenant.SubDomain,
@@ -126,7 +250,7 @@
 				registerTenant.AdminLastName));
 
 			tenantIdText = result.Id.ToString();
-			statusMessage = $"Tenant registered: {result.Id}";
+			SetSuccess($"Tenant registered: {result.Id}");
 		});
 	}
 
@@ -134,28 +258,33 @@
 	{
 		await RunAsync(async () =>
 		{
+			RequireValue(login.Email, "Email");
+			RequireValue(login.Password, "Password");
+
 			var tenantId = ParseGuid(tenantIdText, "Tenant ID");
 			var token = await ApiClient.LoginAsync(new LoginRequest(login.Email, login.Password, tenantId));
 
 			Session.SetSession(tenantId, token.AccessToken, token.RefreshToken);
-			statusMessage = "Login successful.";
+			SetSuccess("Login successful.");
 		});
 	}
 
 	private void ClearSession()
 	{
 		Session.Clear();
-		statusMessage = "Session cleared.";
+		SetSuccess("Session cleared.");
 	}
 
 	private async Task CreateBuildingAsync()
 	{
 		await RunAsync(async () =>
 		{
+			RequireValue(createBuilding.Address, "Building address");
+
 			var result = await ApiClient.CreateBuildingAsync(new CreateBuildingRequest(createBuilding.Address));
 			buildingIdText = result.Id.ToString();
 			createUnit.BuildingIdText = buildingIdText;
-			statusMessage = $"Building created: {result.Id}";
+			SetSuccess($"Building created: {result.Id}");
 		});
 	}
 
@@ -164,10 +293,13 @@
 		await RunAsync(async () =>
 		{
 			var buildingId = ParseGuid(createUnit.BuildingIdText, "Building ID");
+			if (createUnit.UnitNumber <= 0)
+				throw new InvalidOperationException("Unit number must be greater than 0.");
+
 			var result = await ApiClient.CreateUnitAsync(new CreateUnitRequest(buildingId, createUnit.UnitNumber));
 			unitIdText = result.Id.ToString();
 			createLease.UnitIdText = unitIdText;
-			statusMessage = $"Unit created: {result.Id}";
+			SetSuccess($"Unit created: {result.Id}");
 		});
 	}
 
@@ -176,6 +308,8 @@
 		await RunAsync(async () =>
 		{
 			var unitId = ParseGuid(createLease.UnitIdText, "Unit ID");
+			RequireValue(createLease.ResidentName, "Resident name");
+
 			var result = await ApiClient.CreateLeaseAsync(new CreateLeaseRequest(
 				unitId,
 				ParseDateTime(createLease.StartDate, "Lease start date"),
@@ -185,7 +319,7 @@
 			leaseIdText = result.Id.ToString();
 			createInvoice.LeaseIdText = leaseIdText;
 			createInvoice.UnitIdText = unitId.ToString();
-			statusMessage = $"Lease created: {result.Id}";
+			SetSuccess($"Lease created: {result.Id}");
 		});
 	}
 
@@ -195,6 +329,9 @@
 		{
 			Guid? unitId = string.IsNullOrWhiteSpace(createTicket.UnitIdText) ? null : ParseGuid(createTicket.UnitIdText, "Unit ID");
 			Guid? buildingId = string.IsNullOrWhiteSpace(createTicket.BuildingIdText) ? null : ParseGuid(createTicket.BuildingIdText, "Building ID");
+			RequireValue(createTicket.Title, "Ticket title");
+			RequireValue(createTicket.Description, "Ticket description");
+			RequireValue(createTicket.Priority, "Ticket priority");
 
 			var result = await ApiClient.CreateTicketAsync(new CreateMaintenanceTicketRequest(
 				unitId,
@@ -203,7 +340,7 @@
 				createTicket.Description,
 				createTicket.Priority));
 
-			statusMessage = $"Ticket created: {result.Id}";
+			SetSuccess($"Ticket created: {result.Id}");
 		});
 	}
 
@@ -213,6 +350,8 @@
 		{
 			var leaseId = ParseGuid(createInvoice.LeaseIdText, "Lease ID");
 			var unitId = ParseGuid(createInvoice.UnitIdText, "Unit ID");
+			if (createInvoice.BaseAmount <= 0)
+				throw new InvalidOperationException("Invoice base amount must be greater than 0.");
 
 			var result = await ApiClient.CreateInvoiceAsync(new CreateInvoiceRequest(
 				leaseId,
@@ -222,7 +361,7 @@
 
 			invoiceIdText = result.Id.ToString();
 			createPayment.InvoiceIdText = invoiceIdText;
-			statusMessage = $"Invoice created: {result.Id}";
+			SetSuccess($"Invoice created: {result.Id}");
 		});
 	}
 
@@ -231,6 +370,9 @@
 		await RunAsync(async () =>
 		{
 			var invoiceId = ParseGuid(createPayment.InvoiceIdText, "Invoice ID");
+			if (createPayment.Amount <= 0)
+				throw new InvalidOperationException("Payment amount must be greater than 0.");
+			RequireValue(createPayment.Method, "Payment method");
 
 			var result = await ApiClient.CreatePaymentAsync(new CreatePaymentRequest(
 				invoiceId,
@@ -238,7 +380,7 @@
 				createPayment.Method,
 				ParseDateTime(createPayment.PaidAt, "Paid date")));
 
-			statusMessage = $"Payment recorded: {result.Id}";
+			SetSuccess($"Payment recorded: {result.Id}");
 		});
 	}
 
@@ -247,20 +389,43 @@
 		await RunAsync(async () =>
 		{
 			invoices = (await ApiClient.GetInvoicesAsync()).ToList();
-			statusMessage = $"Loaded {invoices.Count} invoice(s).";
+			SetSuccess($"Loaded {invoices.Count} invoice(s).");
 		});
 	}
 
 	private async Task RunAsync(Func<Task> action)
 	{
+		isBusy = true;
 		try
 		{
 			await action();
 		}
 		catch (Exception ex)
 		{
-			statusMessage = ex.Message;
+			SetError(ex.Message);
 		}
+		finally
+		{
+			isBusy = false;
+		}
+	}
+
+	private void SetSuccess(string message)
+	{
+		statusMessage = message;
+		isError = false;
+	}
+
+	private void SetError(string message)
+	{
+		statusMessage = message;
+		isError = true;
+	}
+
+	private static void RequireValue(string? value, string fieldName)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+			throw new InvalidOperationException($"{fieldName} is required.");
 	}
 
 	private static Guid ParseGuid(string value, string field)

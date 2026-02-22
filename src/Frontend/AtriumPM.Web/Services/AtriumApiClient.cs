@@ -66,6 +66,26 @@ public class AtriumApiClient
         return await GetAuthorizedAsync<IReadOnlyList<InvoiceDto>>(_options.BillingBaseUrl, "/api/invoices");
     }
 
+    public async Task<IReadOnlyList<ServiceStatus>> GetServiceStatusesAsync()
+    {
+        var checks = new[]
+        {
+            ("Identity", _options.IdentityBaseUrl),
+            ("Property", _options.PropertyBaseUrl),
+            ("Leasing", _options.LeasingBaseUrl),
+            ("Maintenance", _options.MaintenanceBaseUrl),
+            ("Billing", _options.BillingBaseUrl)
+        };
+
+        var tasks = checks.Select(async check =>
+        {
+            var isReachable = await IsReachableAsync(check.Item2);
+            return new ServiceStatus(check.Item1, check.Item2, isReachable);
+        });
+
+        return (await Task.WhenAll(tasks)).ToList();
+    }
+
     private async Task<TResponse> PostAnonymousAsync<TRequest, TResponse>(string baseUrl, string path, TRequest request)
     {
         var client = _httpClientFactory.CreateClient();
@@ -129,7 +149,24 @@ public class AtriumApiClient
         if (!_session.IsAuthenticated)
             throw new InvalidOperationException("Authenticate first: register/login to set tenant and token.");
     }
+
+    private async Task<bool> IsReachableAsync(string baseUrl)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            using var request = new HttpRequestMessage(HttpMethod.Get, baseUrl);
+            using var response = await client.SendAsync(request);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
+
+public record ServiceStatus(string Name, string Url, bool IsReachable);
 
 public class ApiEndpointsOptions
 {
