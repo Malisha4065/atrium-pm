@@ -1,0 +1,100 @@
+@page "/properties"
+@using AtriumPM.Web.Models
+@using AtriumPM.Web.Services
+@inject AtriumApiClient ApiClient
+
+<PageTitle>Properties - AtriumPM</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1 text-white">All Properties</h2>
+        <p class="text-muted mb-0">View all buildings under your management.</p>
+    </div>
+    <div>
+        <a href="/properties/new" class="btn btn-primary shadow-sm">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="me-1" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add Property
+        </a>
+    </div>
+</div>
+
+<div class="glass-card mb-4 pe-3 py-2">
+    <div class="d-flex align-items-center gap-3">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="text-muted ms-3" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" @bind="searchQuery" @bind:event="oninput" class="form-control bg-transparent border-0 text-white shadow-none ps-0" placeholder="Search buildings by address or ID..." />
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center py-5">
+        <span class="spinner-icon fs-4 text-primary">↻</span>
+    </div>
+}
+else if (filteredBuildings.Count == 0)
+{
+    <div class="glass-card text-center p-5">
+        <div class="mb-3 text-muted">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" class="mb-2" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <h5>No matching properties</h5>
+            <p>Try adjusting your search criteria.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="table-responsive glass-card px-0 py-0">
+        <table class="table table-hover text-white mb-0">
+            <thead style="background: rgba(0,0,0,0.2);">
+                <tr>
+                    <th class="border-0 px-4 py-3 text-secondary">Property ID</th>
+                    <th class="border-0 px-4 py-3 text-secondary">Building Address</th>
+                    <th class="border-0 px-4 py-3 text-secondary text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var building in filteredBuildings)
+                {
+                    <tr style="background: rgba(255,255,255,0.01);">
+                        <td class="px-4 py-3 text-muted font-monospace align-middle" style="width: 30%;">@building.Id</td>
+                        <td class="px-4 py-3 fw-semibold align-middle">@building.Address</td>
+                        <td class="px-4 py-3 text-end align-middle">
+                            <a href="/properties/@building.Id" class="btn btn-sm btn-outline-primary shadow-sm rounded-pill px-3">
+                                View Units
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<BuildingDto> buildings = new();
+    private bool isLoading = true;
+    
+    private string _searchQuery = string.Empty;
+    private string searchQuery 
+    { 
+        get => _searchQuery; 
+        set { _searchQuery = value; StateHasChanged(); } 
+    }
+
+    private List<BuildingDto> filteredBuildings => string.IsNullOrWhiteSpace(searchQuery) 
+        ? buildings 
+        : buildings.Where(b => b.Address.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || b.Id.ToString().Contains(searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isLoading = true;
+            buildings = (await ApiClient.GetBuildingsAsync()).ToList();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

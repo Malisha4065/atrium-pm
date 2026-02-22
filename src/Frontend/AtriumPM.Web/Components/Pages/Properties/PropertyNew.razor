@@ -1,0 +1,83 @@
+@page "/properties/new"
+@using AtriumPM.Web.Models
+@using AtriumPM.Web.Services
+@inject AtriumApiClient ApiClient
+@inject NavigationManager NavigationManager
+
+<PageTitle>New Property - AtriumPM</PageTitle>
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/properties" class="btn btn-outline-secondary p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="text-white" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+    </a>
+    <div>
+        <h2 class="mb-1 text-white">Add New Property</h2>
+        <p class="text-muted mb-0">Register a new building into your management portfolio.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="glass-card">
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="alert alert-danger mb-4 d-flex align-items-center gap-2 shadow-sm">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="flex-shrink-0" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    <div>@errorMessage</div>
+                </div>
+            }
+
+            <EditForm Model="buildingModel" OnValidSubmit="HandleSubmit">
+                <div class="form-floating mb-4">
+                    <InputText id="address" @bind-Value="buildingModel.Address" class="form-control" placeholder="123 Main St, City, State" />
+                    <label for="address">Full Building Address</label>
+                </div>
+                
+                <div class="d-flex gap-3">
+                    <button type="submit" class="btn btn-primary px-4 shadow-sm" disabled="@isBusy">
+                        @if (isBusy) { <span class="spinner-icon me-2">↻</span> }
+                        Create Property
+                    </button>
+                    <a href="/properties" class="btn btn-outline-secondary px-4">Cancel</a>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private BuildingForm buildingModel = new();
+    private bool isBusy = false;
+    private string errorMessage = string.Empty;
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(buildingModel.Address))
+        {
+            errorMessage = "Please enter a building address.";
+            return;
+        }
+
+        try
+        {
+            isBusy = true;
+            errorMessage = string.Empty;
+            
+            var result = await ApiClient.CreateBuildingAsync(new CreateBuildingRequest(buildingModel.Address));
+            NavigationManager.NavigateTo($"/properties/{result.Id}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private class BuildingForm
+    {
+        public string Address { get; set; } = string.Empty;
+    }
+}

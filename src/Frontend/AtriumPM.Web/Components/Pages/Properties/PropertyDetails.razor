@@ -1,0 +1,173 @@
+@page "/properties/{Id:guid}"
+@using AtriumPM.Web.Models
+@using AtriumPM.Web.Services
+@inject AtriumApiClient ApiClient
+@inject NavigationManager NavigationManager
+
+<PageTitle>Property Details - AtriumPM</PageTitle>
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center align-items-center mb-4">
+        <span class="spinner-icon fs-4 text-primary">↻</span>
+    </div>
+}
+else if (building == null)
+{
+    <div class="alert alert-danger shadow-sm">Property not found.</div>
+}
+else
+{
+    <div class="d-flex align-items-center mb-4 gap-3">
+        <a href="/" class="btn btn-outline-secondary p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        </a>
+        <div>
+            <h2 class="mb-1 text-white">@building.Address</h2>
+            <p class="text-muted mb-0 font-monospace">Property ID: @building.Id</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Building Detail Card -->
+        <div class="col-12 col-xl-4">
+            <div class="glass-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0 text-white d-flex align-items-center gap-2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        Building Information
+                    </h5>
+                </div>
+                
+                <ul class="list-group list-group-flush bg-transparent">
+                    <li class="list-group-item bg-transparent text-white px-0 d-flex justify-content-between align-items-center border-bottom border-secondary">
+                        <span class="text-muted">Total Units</span>
+                        <span class="fs-5 fw-bold">@units.Count</span>
+                    </li>
+                </ul>
+
+                <hr class="border-secondary my-4" />
+
+                <h6 class="text-muted mb-3">Quick Actions</h6>
+                <div class="form-floating mb-3">
+                    <input id="unitNum" type="number" @bind="newUnitNumber" class="form-control" placeholder="Unit Number" />
+                    <label for="unitNum">Add New Unit Number</label>
+                </div>
+                <button class="btn btn-primary w-100" @onclick="CreateUnitAsync" disabled="@isBusy">
+                    @if (isBusy) { <span class="spinner-icon me-2">↻</span> }
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Create Unit
+                </button>
+            </div>
+        </div>
+
+        <!-- Units List -->
+        <div class="col-12 col-xl-8">
+            <div class="glass-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3" style="border-color: var(--card-border) !important;">
+                    <h4 class="mb-0 text-white">Units in Building</h4>
+                </div>
+                
+                @if (units.Count == 0)
+                {
+                    <div class="text-center p-5 text-muted">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mb-3"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        <h6>No units added yet.</h6>
+                        <p class="small">Use the panel on the left to create the first unit for this building.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="row g-3">
+                        @foreach (var unit in units.OrderBy(u => u.UnitNumber))
+                        {
+                            <div class="col-12 col-md-6">
+                                <a href="/units/@unit.Id" class="text-decoration-none text-white">
+                                    <div class="p-3 rounded property-card border" style="background: rgba(255,255,255,0.03); border-color: var(--card-border) !important;">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="bg-primary bg-opacity-10 text-primary rounded p-2 d-flex align-items-center justify-content-center">
+                                                    <span class="fs-5 fw-bold px-1">@unit.UnitNumber</span>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-0">Unit @unit.UnitNumber</h6>
+                                                    <small class="text-muted font-monospace">@unit.Id.ToString().Substring(0, 8)...</small>
+                                                </div>
+                                            </div>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .property-card { transition: all 0.2s ease; }
+    .property-card:hover { border-color: var(--primary) !important; background: rgba(30, 41, 59, 0.8) !important; cursor: pointer; }
+</style>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private BuildingDto? building;
+    private List<UnitDto> units = new();
+    private bool isLoading = true;
+    private bool isBusy = false;
+    private int newUnitNumber;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            isLoading = true;
+            building = await ApiClient.GetBuildingByIdAsync(Id);
+            units = (await ApiClient.GetUnitsByBuildingAsync(Id)).ToList();
+            
+            if (units.Any())
+            {
+                newUnitNumber = units.Max(u => u.UnitNumber) + 1;
+            }
+            else
+            {
+                newUnitNumber = 101;
+            }
+        }
+        catch (Exception)
+        {
+            // Error handling ignored for brevity
+            NavigationManager.NavigateTo("/");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CreateUnitAsync()
+    {
+        if (newUnitNumber <= 0) return;
+        
+        try
+        {
+            isBusy = true;
+            await ApiClient.CreateUnitAsync(new CreateUnitRequest(Id, newUnitNumber));
+            await LoadDataAsync();
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+}

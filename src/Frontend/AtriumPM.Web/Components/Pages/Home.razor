@@ -1,609 +1,117 @@
 ﻿@page "/"
-@rendermode InteractiveServer
+@using AtriumPM.Web.Models
+@using AtriumPM.Web.Services
 @inject AtriumApiClient ApiClient
-@inject ApiSessionState Session
 
-<PageTitle>AtriumPM Dashboard</PageTitle>
+<PageTitle>Dashboard - AtriumPM</PageTitle>
 
-<div class="container py-4">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-5">
-        <div>
-            <h1 class="mb-1 d-flex align-items-center gap-2">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                AtriumPM Dashboard
-            </h1>
-            <p class="text-muted mb-0">Follow the guided setup to onboard a tenant and run the full property workflow.</p>
-        </div>
-        <div>
-            <button class="btn btn-outline-primary shadow-sm" @onclick="RefreshServiceStatusAsync" disabled="@isBusy">
-                @if (isBusy) { <span class="spinner-icon me-2">↻</span> }
-                Refresh Service Status
-            </button>
-        </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1 text-white">Properties Overview</h2>
+        <p class="text-muted mb-0">Manage your buildings and real estate assets.</p>
     </div>
-
-    @if (!string.IsNullOrWhiteSpace(statusMessage))
-    {
-        <div class="alert @(isError ? "alert-danger" : "alert-success") mb-4 d-flex align-items-center gap-2 shadow-sm">
-            @if (isError) { <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> }
-            else { <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> }
-            @statusMessage
-        </div>
-    }
-
-    <div class="dashboard-grid mb-4">
-        <div class="col-span-8">
-            <div class="glass-card h-100">
-                <h5 class="section-title">Workflow Progress</h5>
-                <div class="progress mb-4" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@progressPercent">
-                    <div class="progress-bar" style="width:@($"{progressPercent}%")"></div>
-                </div>
-                <div class="d-flex flex-wrap gap-2">
-                    <span class="badge @(HasTenant ? "text-bg-success" : "text-bg-secondary")">1. Tenant</span>
-                    <span class="badge @(Session.IsAuthenticated ? "text-bg-success" : "text-bg-secondary")">2. Login</span>
-                    <span class="badge @(!string.IsNullOrWhiteSpace(buildingIdText) ? "text-bg-success" : "text-bg-secondary")">3. Building</span>
-                    <span class="badge @(!string.IsNullOrWhiteSpace(unitIdText) ? "text-bg-success" : "text-bg-secondary")">4. Unit</span>
-                    <span class="badge @(!string.IsNullOrWhiteSpace(leaseIdText) ? "text-bg-success" : "text-bg-secondary")">5. Lease</span>
-                    <span class="badge @(!string.IsNullOrWhiteSpace(invoiceIdText) ? "text-bg-success" : "text-bg-secondary")">6. Invoice</span>
-                </div>
-            </div>
-        </div>
-        <div class="col-span-4">
-            <div class="glass-card h-100">
-                <h5 class="section-title">System Status</h5>
-                @if (serviceStatuses.Count == 0)
-                {
-                    <div class="text-muted d-flex align-items-center h-100 justify-content-center">No status data yet.</div>
-                }
-                else
-                {
-                    <div class="d-flex flex-column gap-2">
-                    @foreach (var status in serviceStatuses)
-                    {
-                        <div class="d-flex justify-content-between align-items-center border-0 rounded p-2" style="background: rgba(255,255,255,0.03);">
-                            <div>
-                                <div class="fw-semibold">@status.Name</div>
-                                <div class="small text-muted" style="font-size: 0.75rem;">@status.Url</div>
-                            </div>
-                            <span class="badge @(status.IsReachable ? "text-bg-success" : "text-bg-danger")">@(status.IsReachable ? "Up" : "Down")</span>
-                        </div>
-                    }
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-
-    <div class="dashboard-grid">
-        <div class="col-span-6">
-            <section class="glass-card h-100">
-                <h5 class="section-title"><span class="step-number">1</span> Register Tenant</h5>
-                <div class="form-floating mb-2">
-                    <input id="t-name" @bind="registerTenant.Name" placeholder="Company name" class="form-control" disabled="@isBusy" />
-                    <label for="t-name">Company name</label>
-                </div>
-                <div class="form-floating mb-2">
-                    <input id="t-sub" @bind="registerTenant.SubDomain" placeholder="Subdomain" class="form-control" disabled="@isBusy" />
-                    <label for="t-sub">Subdomain</label>
-                </div>
-                <div class="row g-2 mb-2">
-                    <div class="col-6 form-floating">
-                        <input id="t-fname" @bind="registerTenant.AdminFirstName" placeholder="First name" class="form-control" disabled="@isBusy" />
-                        <label for="t-fname">First name</label>
-                    </div>
-                    <div class="col-6 form-floating">
-                        <input id="t-lname" @bind="registerTenant.AdminLastName" placeholder="Last name" class="form-control" disabled="@isBusy" />
-                        <label for="t-lname">Last name</label>
-                    </div>
-                </div>
-                <div class="form-floating mb-2">
-                    <input id="t-email" @bind="registerTenant.AdminEmail" placeholder="Admin email" class="form-control" disabled="@isBusy" />
-                    <label for="t-email">Admin email</label>
-                </div>
-                <div class="form-floating mb-4">
-                    <input id="t-pass" @bind="registerTenant.AdminPassword" placeholder="Admin password" class="form-control" type="password" disabled="@isBusy" />
-                    <label for="t-pass">Admin password</label>
-                </div>
-                <div>
-                    <button class="btn btn-primary w-100 shadow-sm py-2" @onclick="RegisterTenantAsync" disabled="@isBusy">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                        @if(isBusy) { <span class="spinner-icon me-2">↻</span> }
-                        Register Tenant
-                    </button>
-                </div>
-                @if(!string.IsNullOrWhiteSpace(tenantIdText)) {
-                    <div class="small mt-3 p-3 rounded" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2);">
-                        <strong class="text-success d-block mb-1">Registration Successful</strong>
-                        <span class="text-muted d-block text-break" style="font-family: monospace;">Tenant ID: @tenantIdText</span>
-                    </div>
-                }
-            </section>
-        </div>
-
-        <div class="col-span-6">
-            <section class="glass-card h-100">
-                <h5 class="section-title"><span class="step-number">2</span> Login Session</h5>
-                <div class="form-floating mb-2">
-                    <input id="l-email" @bind="login.Email" placeholder="Email" class="form-control" disabled="@isBusy" />
-                    <label for="l-email">Email</label>
-                </div>
-                <div class="form-floating mb-2">
-                    <input id="l-pass" @bind="login.Password" placeholder="Password" class="form-control" type="password" disabled="@isBusy" />
-                    <label for="l-pass">Password</label>
-                </div>
-                <div class="form-floating mb-4">
-                    <input id="l-tenant" @bind="tenantIdText" placeholder="Tenant ID" class="form-control" disabled="@isBusy" />
-                    <label for="l-tenant">Tenant ID</label>
-                </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-primary flex-grow-1 shadow-sm py-2" @onclick="LoginAsync" disabled="@(isBusy || !HasTenant)">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
-                        @if(isBusy) { <span class="spinner-icon me-2">↻</span> } Login
-                    </button>
-                    <button class="btn btn-outline-secondary" @onclick="ClearSession" disabled="@isBusy">Clear</button>
-                </div>
-                <div class="mt-4">
-                    <span class="badge @(Session.IsAuthenticated ? "text-bg-success" : "text-bg-secondary") w-100 p-3 text-start d-flex align-items-center fs-6 shadow-sm">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="me-2" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                        Status: @(Session.IsAuthenticated ? "Authenticated" : "Not Authenticated")
-                    </span>
-                </div>
-            </section>
-        </div>
-
-        <div class="col-span-6">
-            <section class="glass-card h-100">
-                <h5 class="section-title"><span class="step-number">3</span> Property Setup</h5>
-                <div class="p-4 rounded mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border);">
-                    <h6 class="mb-3 text-muted">Create Building</h6>
-                    <div class="d-flex gap-2 mb-2">
-                        <input @bind="createBuilding.Address" placeholder="Building address" class="form-control" disabled="@isBusy" />
-                        <button class="btn btn-primary text-nowrap px-4 shadow-sm" @onclick="CreateBuildingAsync" disabled="@(isBusy || !Session.IsAuthenticated)">Create</button>
-                    </div>
-                    @if(!string.IsNullOrWhiteSpace(buildingIdText)) { <div class="small text-success mt-2 font-monospace">ID: @buildingIdText</div> }
-                </div>
-
-                <div class="p-4 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border);">
-                    <h6 class="mb-3 text-muted">Create Unit</h6>
-                    <input @bind="createUnit.BuildingIdText" placeholder="Building ID" class="form-control mb-3" disabled="@isBusy" />
-                    <div class="d-flex gap-2 mb-2">
-                        <input @bind="createUnit.UnitNumber" placeholder="Unit number" class="form-control" type="number" disabled="@isBusy" />
-                        <button class="btn btn-primary text-nowrap px-4 shadow-sm" @onclick="CreateUnitAsync" disabled="@(isBusy || string.IsNullOrWhiteSpace(createUnit.BuildingIdText))">Create</button>
-                    </div>
-                    @if(!string.IsNullOrWhiteSpace(unitIdText)) { <div class="small text-success mt-2 font-monospace">ID: @unitIdText</div> }
-                </div>
-            </section>
-        </div>
-
-        <div class="col-span-6">
-            <section class="glass-card h-100">
-                <h5 class="section-title"><span class="step-number">4</span> Lease & Maintenance</h5>
-                <div class="p-4 rounded mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border);">
-                    <h6 class="mb-3 text-muted">Create Lease</h6>
-                    <input @bind="createLease.UnitIdText" placeholder="Unit ID" class="form-control mb-3" disabled="@isBusy" />
-                    <div class="row g-2 mb-3">
-                        <div class="col-6"><input @bind="createLease.StartDate" class="form-control" title="Start Date" disabled="@isBusy" /></div>
-                        <div class="col-6"><input @bind="createLease.EndDate" class="form-control" title="End Date" disabled="@isBusy" /></div>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <input @bind="createLease.ResidentName" placeholder="Resident name" class="form-control" disabled="@isBusy" />
-                        <button class="btn btn-primary text-nowrap px-4 shadow-sm" @onclick="CreateLeaseAsync" disabled="@(isBusy || string.IsNullOrWhiteSpace(createLease.UnitIdText))">Create</button>
-                    </div>
-                    @if(!string.IsNullOrWhiteSpace(leaseIdText)) { <div class="small text-success mt-3 font-monospace">ID: @leaseIdText</div> }
-                </div>
-
-                <div class="p-4 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border);">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0 text-muted">Maintenance Ticket</h6>
-                        <span class="badge text-bg-secondary">Optional</span>
-                    </div>
-                    <input @bind="createTicket.UnitIdText" placeholder="Unit ID" class="form-control mb-3" disabled="@isBusy" />
-                    <div class="d-flex gap-2 mb-3">
-                        <input @bind="createTicket.Title" placeholder="Issue title" class="form-control" disabled="@isBusy" />
-                        <input @bind="createTicket.Priority" placeholder="Priority" class="form-control w-25" disabled="@isBusy" />
-                    </div>
-                    <div class="d-flex gap-2">
-                        <input @bind="createTicket.Description" placeholder="Description" class="form-control" disabled="@isBusy" />
-                        <button class="btn btn-outline-primary text-nowrap px-4 shadow-sm" @onclick="CreateTicketAsync" disabled="@(isBusy || !Session.IsAuthenticated)">Submit</button>
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        <div class="col-span-12">
-            <section class="glass-card mb-4">
-                <h5 class="section-title"><span class="step-number">5</span> Billing & Payments</h5>
-                <div class="row g-4">
-                    <div class="col-md-5">
-                        <div class="p-4 rounded h-100" style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border);">
-                            <h6 class="mb-3 text-muted">1. Generate Invoice</h6>
-                            <input @bind="createInvoice.LeaseIdText" placeholder="Lease ID" class="form-control mb-3" disabled="@isBusy" />
-                            <input @bind="createInvoice.UnitIdText" placeholder="Unit ID" class="form-control mb-3" disabled="@isBusy" />
-                            <div class="row g-2 mb-4">
-                                <div class="col-6"><input @bind="createInvoice.BaseAmount" placeholder="Amount" class="form-control" type="number" step="0.01" disabled="@isBusy" /></div>
-                                <div class="col-6"><input @bind="createInvoice.DueDate" class="form-control" placeholder="Due Date" disabled="@isBusy" /></div>
-                            </div>
-                            <button class="btn btn-primary w-100 py-2 shadow-sm" @onclick="CreateInvoiceAsync" disabled="@(isBusy || string.IsNullOrWhiteSpace(createInvoice.LeaseIdText))">Create Invoice</button>
-                            @if(!string.IsNullOrWhiteSpace(invoiceIdText)) { <div class="small text-success mt-3 text-center font-monospace">ID: @invoiceIdText</div> }
-                        </div>
-                    </div>
-                    <div class="col-md-5">
-                        <div class="p-4 rounded h-100" style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border);">
-                            <h6 class="mb-3 text-muted">2. Record Payment</h6>
-                            <input @bind="createPayment.InvoiceIdText" placeholder="Invoice ID" class="form-control mb-3" disabled="@isBusy" />
-                            <div class="row g-2 mb-3">
-                                <div class="col-6"><input @bind="createPayment.Amount" placeholder="Amount" class="form-control" type="number" step="0.01" disabled="@isBusy" /></div>
-                                <div class="col-6"><input @bind="createPayment.Method" placeholder="Method (Card/Bank)" class="form-control" disabled="@isBusy" /></div>
-                            </div>
-                            <input @bind="createPayment.PaidAt" class="form-control mb-4" placeholder="Paid Date" disabled="@isBusy" />
-                            <button class="btn btn-outline-primary w-100 py-2 shadow-sm" @onclick="CreatePaymentAsync" disabled="@(isBusy || string.IsNullOrWhiteSpace(createPayment.InvoiceIdText))">Record Payment</button>
-                        </div>
-                    </div>
-                    <div class="col-md-2 d-flex flex-column gap-2 justify-content-center">
-                        <button class="btn btn-secondary w-100 h-100 py-3 d-flex flex-column align-items-center justify-content-center gap-2 shadow-sm" style="min-height: 120px;" @onclick="LoadInvoicesAsync" disabled="@(isBusy || !Session.IsAuthenticated)">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                            <span class="fw-semibold">Sync<br/>Invoices</span>
-                        </button>
-                    </div>
-                </div>
-
-                @if (invoices.Count > 0)
-                {
-                    <div class="table-responsive mt-4 rounded border" style="border-color: var(--card-border) !important;">
-                        <table class="table table-hover mb-0">
-                            <thead style="background: rgba(0,0,0,0.2);">
-                                <tr>
-                                    <th class="border-0 px-4 py-3">Invoice ID</th>
-                                    <th class="border-0 px-4 py-3">Status</th>
-                                    <th class="border-0 px-4 py-3 text-end">Paid Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var invoice in invoices)
-                                {
-                                    <tr style="background: rgba(255,255,255,0.02);">
-                                        <td class="px-4 py-3 text-muted" style="font-family: monospace;">@invoice.Id</td>
-                                        <td class="px-4 py-3">
-                                            <span class="badge @(invoice.Status == "Paid" ? "text-bg-success" : "text-bg-secondary")">@invoice.Status</span>
-                                        </td>
-                                        <td class="px-4 py-3 text-end fw-semibold text-success">
-                                            $@invoice.PaidAmount.ToString("N2")
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </section>
-        </div>
+    <div>
+        <a href="/properties/new" class="btn btn-primary shadow-sm">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add Property
+        </a>
     </div>
 </div>
 
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger mb-4 d-flex align-items-center gap-2 shadow-sm">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="flex-shrink-0" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        <div>@errorMessage</div>
+    </div>
+}
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center align-items-center py-5">
+        <span class="spinner-icon fs-4 text-primary">↻</span>
+    </div>
+}
+else if (buildings.Count == 0)
+{
+    <div class="glass-card text-center p-5">
+        <div class="mb-4 text-muted">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" class="mb-2" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            <h5>No Properties Found</h5>
+            <p>You haven't added any buildings to your portfolio yet.</p>
+        </div>
+        <a href="/properties/new" class="btn btn-outline-primary shadow-sm px-4 py-2">Create First Property</a>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var building in buildings)
+        {
+            <div class="col-12 col-md-6 col-lg-4">
+                <a href="/properties/@building.Id" class="text-decoration-none">
+                    <div class="glass-card h-100 property-card">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="p-2 rounded bg-primary bg-opacity-10 text-primary mb-2">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                            </div>
+                        </div>
+                        <h5 class="text-white mb-1 building-address">@building.Address</h5>
+                        <p class="text-muted small font-monospace mb-4">ID: @building.Id.ToString().Substring(0, 8)...</p>
+                        
+                        <div class="d-flex align-items-center justify-content-between pt-3 border-top" style="border-color: var(--card-border) !important;">
+                            <span class="text-primary fs-6 fw-semibold d-flex align-items-center gap-1">
+                                View Details 
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                            </span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .property-card {
+        transition: all 0.2s ease;
+    }
+    .property-card:hover {
+        border-color: var(--primary);
+        background: rgba(30, 41, 59, 0.85);
+    }
+    .building-address {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+
 @code {
-	private IReadOnlyList<ServiceStatus> serviceStatuses = Array.Empty<ServiceStatus>();
-	private RegisterTenantForm registerTenant = new();
-	private LoginForm login = new();
-	private string tenantIdText = string.Empty;
+    private List<BuildingDto> buildings = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
 
-	private CreateBuildingForm createBuilding = new();
-	private CreateUnitForm createUnit = new();
-	private CreateLeaseForm createLease = new();
-	private CreateTicketForm createTicket = new();
-	private CreateInvoiceForm createInvoice = new();
-	private CreatePaymentForm createPayment = new();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBuildingsAsync();
+    }
 
-	private List<InvoiceDto> invoices = new();
-	private string statusMessage = string.Empty;
-	private bool isError;
-	private bool isBusy;
-	private string buildingIdText = string.Empty;
-	private string unitIdText = string.Empty;
-	private string leaseIdText = string.Empty;
-	private string invoiceIdText = string.Empty;
-
-	private bool HasTenant => !string.IsNullOrWhiteSpace(tenantIdText);
-	private int progressPercent
-	{
-		get
-		{
-			var complete = 0;
-			if (HasTenant) complete++;
-			if (Session.IsAuthenticated) complete++;
-			if (!string.IsNullOrWhiteSpace(buildingIdText)) complete++;
-			if (!string.IsNullOrWhiteSpace(unitIdText)) complete++;
-			if (!string.IsNullOrWhiteSpace(leaseIdText)) complete++;
-			if (!string.IsNullOrWhiteSpace(invoiceIdText)) complete++;
-
-			return (int)Math.Round((complete / 6d) * 100);
-		}
-	}
-
-	protected override async Task OnInitializedAsync()
-	{
-		await RefreshServiceStatusAsync();
-	}
-
-	private async Task RefreshServiceStatusAsync()
-	{
-		await RunAsync(async () =>
-		{
-			serviceStatuses = await ApiClient.GetServiceStatusesAsync();
-			SetSuccess("Service status refreshed.");
-		});
-	}
-
-	private async Task RegisterTenantAsync()
-	{
-		await RunAsync(async () =>
-		{
-			RequireValue(registerTenant.Name, "Company name");
-			RequireValue(registerTenant.SubDomain, "Subdomain");
-			RequireValue(registerTenant.AdminEmail, "Admin email");
-			RequireValue(registerTenant.AdminPassword, "Admin password");
-			RequireValue(registerTenant.AdminFirstName, "Admin first name");
-			RequireValue(registerTenant.AdminLastName, "Admin last name");
-
-			var result = await ApiClient.RegisterTenantAsync(new RegisterTenantRequest(
-				registerTenant.Name,
-				registerTenant.SubDomain,
-				registerTenant.AdminEmail,
-				registerTenant.AdminPassword,
-				registerTenant.AdminFirstName,
-				registerTenant.AdminLastName));
-
-			tenantIdText = result.Id.ToString();
-			SetSuccess($"Tenant registered: {result.Id}");
-		});
-	}
-
-	private async Task LoginAsync()
-	{
-		await RunAsync(async () =>
-		{
-			RequireValue(login.Email, "Email");
-			RequireValue(login.Password, "Password");
-
-			var tenantId = ParseGuid(tenantIdText, "Tenant ID");
-			var token = await ApiClient.LoginAsync(new LoginRequest(login.Email, login.Password, tenantId));
-
-			Session.SetSession(tenantId, token.AccessToken, token.RefreshToken);
-			SetSuccess("Login successful.");
-		});
-	}
-
-	private void ClearSession()
-	{
-		Session.Clear();
-		SetSuccess("Session cleared.");
-	}
-
-	private async Task CreateBuildingAsync()
-	{
-		await RunAsync(async () =>
-		{
-			RequireValue(createBuilding.Address, "Building address");
-
-			var result = await ApiClient.CreateBuildingAsync(new CreateBuildingRequest(createBuilding.Address));
-			buildingIdText = result.Id.ToString();
-			createUnit.BuildingIdText = buildingIdText;
-			SetSuccess($"Building created: {result.Id}");
-		});
-	}
-
-	private async Task CreateUnitAsync()
-	{
-		await RunAsync(async () =>
-		{
-			var buildingId = ParseGuid(createUnit.BuildingIdText, "Building ID");
-			if (createUnit.UnitNumber <= 0)
-				throw new InvalidOperationException("Unit number must be greater than 0.");
-
-			var result = await ApiClient.CreateUnitAsync(new CreateUnitRequest(buildingId, createUnit.UnitNumber));
-			unitIdText = result.Id.ToString();
-			createLease.UnitIdText = unitIdText;
-			SetSuccess($"Unit created: {result.Id}");
-		});
-	}
-
-	private async Task CreateLeaseAsync()
-	{
-		await RunAsync(async () =>
-		{
-			var unitId = ParseGuid(createLease.UnitIdText, "Unit ID");
-			RequireValue(createLease.ResidentName, "Resident name");
-
-			var result = await ApiClient.CreateLeaseAsync(new CreateLeaseRequest(
-				unitId,
-				ParseDateTime(createLease.StartDate, "Lease start date"),
-				string.IsNullOrWhiteSpace(createLease.EndDate) ? null : ParseDateTime(createLease.EndDate, "Lease end date"),
-				createLease.ResidentName));
-
-			leaseIdText = result.Id.ToString();
-			createInvoice.LeaseIdText = leaseIdText;
-			createInvoice.UnitIdText = unitId.ToString();
-			SetSuccess($"Lease created: {result.Id}");
-		});
-	}
-
-	private async Task CreateTicketAsync()
-	{
-		await RunAsync(async () =>
-		{
-			Guid? unitId = string.IsNullOrWhiteSpace(createTicket.UnitIdText) ? null : ParseGuid(createTicket.UnitIdText, "Unit ID");
-			Guid? buildingId = string.IsNullOrWhiteSpace(createTicket.BuildingIdText) ? null : ParseGuid(createTicket.BuildingIdText, "Building ID");
-			RequireValue(createTicket.Title, "Ticket title");
-			RequireValue(createTicket.Description, "Ticket description");
-			RequireValue(createTicket.Priority, "Ticket priority");
-
-			var result = await ApiClient.CreateTicketAsync(new CreateMaintenanceTicketRequest(
-				unitId,
-				buildingId,
-				createTicket.Title,
-				createTicket.Description,
-				createTicket.Priority));
-
-			SetSuccess($"Ticket created: {result.Id}");
-		});
-	}
-
-	private async Task CreateInvoiceAsync()
-	{
-		await RunAsync(async () =>
-		{
-			var leaseId = ParseGuid(createInvoice.LeaseIdText, "Lease ID");
-			var unitId = ParseGuid(createInvoice.UnitIdText, "Unit ID");
-			if (createInvoice.BaseAmount <= 0)
-				throw new InvalidOperationException("Invoice base amount must be greater than 0.");
-
-			var result = await ApiClient.CreateInvoiceAsync(new CreateInvoiceRequest(
-				leaseId,
-				unitId,
-				createInvoice.BaseAmount,
-				ParseDateTime(createInvoice.DueDate, "Due date")));
-
-			invoiceIdText = result.Id.ToString();
-			createPayment.InvoiceIdText = invoiceIdText;
-			SetSuccess($"Invoice created: {result.Id}");
-		});
-	}
-
-	private async Task CreatePaymentAsync()
-	{
-		await RunAsync(async () =>
-		{
-			var invoiceId = ParseGuid(createPayment.InvoiceIdText, "Invoice ID");
-			if (createPayment.Amount <= 0)
-				throw new InvalidOperationException("Payment amount must be greater than 0.");
-			RequireValue(createPayment.Method, "Payment method");
-
-			var result = await ApiClient.CreatePaymentAsync(new CreatePaymentRequest(
-				invoiceId,
-				createPayment.Amount,
-				createPayment.Method,
-				ParseDateTime(createPayment.PaidAt, "Paid date")));
-
-			SetSuccess($"Payment recorded: {result.Id}");
-		});
-	}
-
-	private async Task LoadInvoicesAsync()
-	{
-		await RunAsync(async () =>
-		{
-			invoices = (await ApiClient.GetInvoicesAsync()).ToList();
-			SetSuccess($"Loaded {invoices.Count} invoice(s).");
-		});
-	}
-
-	private async Task RunAsync(Func<Task> action)
-	{
-		isBusy = true;
-		try
-		{
-			await action();
-		}
-		catch (Exception ex)
-		{
-			SetError(ex.Message);
-		}
-		finally
-		{
-			isBusy = false;
-		}
-	}
-
-	private void SetSuccess(string message)
-	{
-		statusMessage = message;
-		isError = false;
-	}
-
-	private void SetError(string message)
-	{
-		statusMessage = message;
-		isError = true;
-	}
-
-	private static void RequireValue(string? value, string fieldName)
-	{
-		if (string.IsNullOrWhiteSpace(value))
-			throw new InvalidOperationException($"{fieldName} is required.");
-	}
-
-	private static Guid ParseGuid(string value, string field)
-	{
-		if (!Guid.TryParse(value, out var guid))
-			throw new InvalidOperationException($"{field} is not a valid GUID.");
-
-		return guid;
-	}
-
-	private static DateTime ParseDateTime(string value, string field)
-	{
-		if (!DateTime.TryParse(value, out var dateTime))
-			throw new InvalidOperationException($"{field} is not a valid date/time.");
-
-		return dateTime;
-	}
-
-	private class RegisterTenantForm
-	{
-		public string Name { get; set; } = "Atrium Tenant";
-		public string SubDomain { get; set; } = $"tenant-{DateTime.UtcNow:HHmmss}";
-		public string AdminEmail { get; set; } = "admin@tenant.com";
-		public string AdminPassword { get; set; } = "Password123!";
-		public string AdminFirstName { get; set; } = "Admin";
-		public string AdminLastName { get; set; } = "User";
-	}
-
-	private class LoginForm
-	{
-		public string Email { get; set; } = "admin@tenant.com";
-		public string Password { get; set; } = "Password123!";
-	}
-
-	private class CreateBuildingForm
-	{
-		public string Address { get; set; } = "123 Main St";
-	}
-
-	private class CreateUnitForm
-	{
-		public string BuildingIdText { get; set; } = string.Empty;
-		public int UnitNumber { get; set; } = 101;
-	}
-
-	private class CreateLeaseForm
-	{
-		public string UnitIdText { get; set; } = string.Empty;
-		public string StartDate { get; set; } = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm");
-		public string EndDate { get; set; } = DateTime.UtcNow.AddMonths(12).ToString("yyyy-MM-ddTHH:mm");
-		public string ResidentName { get; set; } = "John Resident";
-	}
-
-	private class CreateTicketForm
-	{
-		public string UnitIdText { get; set; } = string.Empty;
-		public string BuildingIdText { get; set; } = string.Empty;
-		public string Title { get; set; } = "Maintenance request";
-		public string Description { get; set; } = "Leaking faucet in kitchen";
-		public string Priority { get; set; } = "High";
-	}
-
-	private class CreateInvoiceForm
-	{
-		public string LeaseIdText { get; set; } = string.Empty;
-		public string UnitIdText { get; set; } = string.Empty;
-		public decimal BaseAmount { get; set; } = 1200m;
-		public string DueDate { get; set; } = DateTime.UtcNow.AddDays(7).ToString("yyyy-MM-ddTHH:mm");
-	}
-
-	private class CreatePaymentForm
-	{
-		public string InvoiceIdText { get; set; } = string.Empty;
-		public decimal Amount { get; set; } = 1200m;
-		public string Method { get; set; } = "Card";
-		public string PaidAt { get; set; } = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm");
-	}
+    private async Task LoadBuildingsAsync()
+    {
+        try
+        {
+            isLoading = true;
+            buildings = (await ApiClient.GetBuildingsAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load properties: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
 }

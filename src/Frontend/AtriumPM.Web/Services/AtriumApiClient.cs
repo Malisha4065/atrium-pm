@@ -61,6 +61,36 @@ public class AtriumApiClient
         return await PostAuthorizedAsync<CreatePaymentRequest, PaymentDto>(_options.BillingBaseUrl, "/api/payments", request);
     }
 
+    public async Task<IReadOnlyList<BuildingDto>> GetBuildingsAsync()
+    {
+        return await GetAuthorizedAsync<IReadOnlyList<BuildingDto>>(_options.PropertyBaseUrl, "/api/buildings");
+    }
+
+    public async Task<BuildingDto> GetBuildingByIdAsync(Guid id)
+    {
+        return await GetAuthorizedAsync<BuildingDto>(_options.PropertyBaseUrl, $"/api/buildings/{id}");
+    }
+
+    public async Task<IReadOnlyList<UnitDto>> GetUnitsAsync()
+    {
+        return await GetAuthorizedAsync<IReadOnlyList<UnitDto>>(_options.PropertyBaseUrl, "/api/units");
+    }
+
+    public async Task<UnitDto> GetUnitByIdAsync(Guid id)
+    {
+        return await GetAuthorizedAsync<UnitDto>(_options.PropertyBaseUrl, $"/api/units/{id}");
+    }
+
+    public async Task<IReadOnlyList<UnitDto>> GetUnitsByBuildingAsync(Guid buildingId)
+    {
+        return await GetAuthorizedAsync<IReadOnlyList<UnitDto>>(_options.PropertyBaseUrl, $"/api/units/building/{buildingId}");
+    }
+
+    public async Task<IReadOnlyList<LeaseDto>> GetLeasesAsync()
+    {
+        return await GetAuthorizedAsync<IReadOnlyList<LeaseDto>>(_options.LeasingBaseUrl, "/api/leases");
+    }
+
     public async Task<IReadOnlyList<InvoiceDto>> GetInvoicesAsync()
     {
         return await GetAuthorizedAsync<IReadOnlyList<InvoiceDto>>(_options.BillingBaseUrl, "/api/invoices");

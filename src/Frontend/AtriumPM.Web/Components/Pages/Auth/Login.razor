@@ -1,0 +1,106 @@
+@page "/login"
+@using AtriumPM.Web.Models
+@using AtriumPM.Web.Services
+@using AtriumPM.Web.Components.Layout
+@layout AuthLayout
+@inject AtriumApiClient ApiClient
+@inject ApiSessionState Session
+@inject NavigationManager NavigationManager
+
+<PageTitle>Login - AtriumPM</PageTitle>
+
+<div class="glass-card shadow-lg p-5">
+    <div class="text-center mb-4">
+        <h2 class="mb-1 d-flex align-items-center justify-content-center gap-2">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            AtriumPM
+        </h2>
+        <p class="text-muted">Sign in to your account</p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger mb-4 d-flex align-items-center gap-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="flex-shrink-0" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <div>@errorMessage</div>
+        </div>
+    }
+
+    <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
+        <DataAnnotationsValidator />
+
+        <div class="form-floating mb-3">
+            <InputText id="tenantId" @bind-Value="loginModel.TenantIdText" class="form-control" placeholder="Tenant ID" />
+            <label for="tenantId">Tenant ID</label>
+        </div>
+
+        <div class="form-floating mb-3">
+            <InputText type="email" id="email" @bind-Value="loginModel.Email" class="form-control" placeholder="name@example.com" />
+            <label for="email">Email address</label>
+        </div>
+
+        <div class="form-floating mb-4">
+            <InputText type="password" id="password" @bind-Value="loginModel.Password" class="form-control" placeholder="Password" />
+            <label for="password">Password</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-3 mb-3 fw-bold" disabled="@isBusy">
+            @if (isBusy) { <span class="spinner-icon me-2">↻</span> }
+            Sign In
+        </button>
+
+        <div class="text-center">
+            <span class="text-muted">Don't have an account? </span>
+            <a href="/register" class="text-primary text-decoration-none fw-semibold">Register Tenant</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private LoginForm loginModel = new();
+    private bool isBusy;
+    private string errorMessage = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        if (Session.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        isBusy = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(loginModel.Email) || string.IsNullOrWhiteSpace(loginModel.Password))
+                throw new InvalidOperationException("Email and password are required.");
+
+            if (!Guid.TryParse(loginModel.TenantIdText, out var tenantId))
+                throw new InvalidOperationException("Invalid Tenant ID format.");
+
+            var token = await ApiClient.LoginAsync(new LoginRequest(loginModel.Email, loginModel.Password, tenantId));
+            
+            Session.SetSession(tenantId, token.AccessToken, token.RefreshToken);
+            NavigationManager.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private class LoginForm
+    {
+        public string TenantIdText { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}
