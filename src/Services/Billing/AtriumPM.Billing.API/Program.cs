@@ -4,6 +4,7 @@ using AtriumPM.Billing.API.Application.Services;
 using AtriumPM.Billing.API.Infrastructure.Consumers;
 using AtriumPM.Billing.API.Infrastructure.Data;
 using AtriumPM.Billing.API.Infrastructure.Jobs;
+using AtriumPM.Shared.Data;
 using AtriumPM.Shared.Interfaces;
 using AtriumPM.Shared.Middleware;
 using AtriumPM.Shared.Services;
@@ -15,12 +16,22 @@ using Quartz;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<BillingDbContext>((_, options) =>
-{
-    options.UseSqlServer(builder.Configuration.GetConnectionString("BillingDb"));
-});
-
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
+builder.Services.AddScoped<ITenantConnectionStringResolver, TenantConnectionStringResolver>();
+builder.Services.AddScoped<TenantSessionContextConnectionInterceptor>();
+
+builder.Services.AddDbContext<BillingDbContext>((sp, options) =>
+{
+    var defaultConnection = builder.Configuration.GetConnectionString("BillingDb")
+        ?? throw new InvalidOperationException("Connection string 'BillingDb' is not configured.");
+
+    var connectionResolver = sp.GetRequiredService<ITenantConnectionStringResolver>();
+    var resolvedConnection = connectionResolver.ResolveConnectionString(defaultConnection);
+
+    options.UseSqlServer(resolvedConnection);
+    options.AddInterceptors(sp.GetRequiredService<TenantSessionContextConnectionInterceptor>());
+});
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<ILateFeeService, LateFeeService>();
 
@@ -136,6 +147,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<BillingDbContext>();
     await db.Database.MigrateAsync();
+    await db.EnsureTenantRlsPoliciesAsync();
 }
 
 app.Run();

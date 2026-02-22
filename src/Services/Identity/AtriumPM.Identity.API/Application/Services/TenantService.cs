@@ -4,7 +4,10 @@ using AtriumPM.Identity.API.Application.Interfaces;
 using AtriumPM.Identity.API.Domain.Entities;
 using AtriumPM.Identity.API.Domain.Enums;
 using AtriumPM.Identity.API.Infrastructure.Data;
+using AtriumPM.Shared.Interfaces;
 using MassTransit;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -18,15 +21,21 @@ public class TenantService : ITenantService
 {
     private readonly IdentityDbContext _db;
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly ITenantContext _tenantContext;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<TenantService> _logger;
 
     public TenantService(
         IdentityDbContext db,
         IPublishEndpoint publishEndpoint,
+        ITenantContext tenantContext,
+        IConfiguration configuration,
         ILogger<TenantService> logger)
     {
         _db = db;
         _publishEndpoint = publishEndpoint;
+        _tenantContext = tenantContext;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -49,11 +58,15 @@ public class TenantService : ITenantService
                 Name = request.Name,
                 SubDomain = request.SubDomain.ToLowerInvariant(),
                 Status = TenantStatus.Active,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ConnectionString = BuildTenantConnectionTemplate()
             };
 
             _db.Tenants.Add(tenant);
             await _db.SaveChangesAsync();
+
+            _tenantContext.TenantId = tenant.Id;
+            await _db.SetSessionContextAsync();
 
             // Create the admin user for this tenant
             var adminUser = new User
@@ -107,5 +120,26 @@ public class TenantService : ITenantService
             .Select(t => new TenantDto(t.Id, t.Name, t.SubDomain,
                 t.Status.ToString(), t.CreatedAt))
             .ToListAsync();
+    }
+
+    private string? BuildTenantConnectionTemplate()
+    {
+        var identityDbConnection = _configuration.GetConnectionString("IdentityDb");
+        if (string.IsNullOrWhiteSpace(identityDbConnection))
+            return null;
+
+        try
+        {
+            var connectionBuilder = new SqlConnectionStringBuilder(identityDbConnection)
+            {
+                InitialCatalog = "{db}"
+            };
+
+            return connectionBuilder.ConnectionString;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

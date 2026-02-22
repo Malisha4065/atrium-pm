@@ -2,6 +2,7 @@ using System.Text;
 using AtriumPM.Identity.API.Application.Interfaces;
 using AtriumPM.Identity.API.Application.Services;
 using AtriumPM.Identity.API.Infrastructure.Data;
+using AtriumPM.Shared.Data;
 using AtriumPM.Shared.Interfaces;
 using AtriumPM.Shared.Middleware;
 using AtriumPM.Shared.Services;
@@ -13,9 +14,12 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 
 // ── EF Core + SQL Server ─────────────────────────────────
+builder.Services.AddScoped<TenantSessionContextConnectionInterceptor>();
+
 builder.Services.AddDbContext<IdentityDbContext>((sp, options) =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("IdentityDb"));
+    options.AddInterceptors(sp.GetRequiredService<TenantSessionContextConnectionInterceptor>());
 });
 
 // ── Multi-Tenancy ────────────────────────────────────────
@@ -143,6 +147,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
     await db.Database.MigrateAsync();
+    await db.EnsureTenantRlsPoliciesAsync();
 }
 
 app.Run();

@@ -87,6 +87,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__PropertyDb: "Server=sqlserver,1433;Database=AtriumPM_Property;User Id=sa;Password=Your_Strong_Password_123;TrustServerCertificate=True;"
+      ConnectionStrings__IdentityDb: "Server=sqlserver,1433;Database=AtriumPM_Identity;User Id=sa;Password=Your_Strong_Password_123;TrustServerCertificate=True;"
       ConnectionStrings__Redis: "redis:6379"
       Jwt__Key: "AtriumPM-Super-Secret-JWT-Key-Must-Be-At-Least-32-Characters-Long!"
       Jwt__Issuer: "AtriumPM.Identity"
@@ -109,6 +110,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__LeasingDb: "Server=sqlserver,1433;Database=AtriumPM_Leasing;User Id=sa;Password=Your_Strong_Password_123;TrustServerCertificate=True;"
+      ConnectionStrings__IdentityDb: "Server=sqlserver,1433;Database=AtriumPM_Identity;User Id=sa;Password=Your_Strong_Password_123;TrustServerCertificate=True;"
       ConnectionStrings__RabbitMq: "rabbitmq://rabbitmq"
       Jwt__Key: "AtriumPM-Super-Secret-JWT-Key-Must-Be-At-Least-32-Characters-Long!"
       Jwt__Issuer: "AtriumPM.Identity"
@@ -131,6 +133,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__MaintenanceDb: "Server=sqlserver,1433;Database=AtriumPM_Maintenance;User Id=sa;Password=Your_Strong_Password_123;TrustServerCertificate=True;"
+      ConnectionStrings__IdentityDb: "Server=sqlserver,1433;Database=AtriumPM_Identity;User Id=sa;Password=Your_Strong_Password_123;TrustServerCertificate=True;"
       Jwt__Key: "AtriumPM-Super-Secret-JWT-Key-Must-Be-At-Least-32-Characters-Long!"
       Jwt__Issuer: "AtriumPM.Identity"
       Jwt__Audience: "AtriumPM.Services"
@@ -150,6 +153,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__BillingDb: "Server=sqlserver,1433;Database=AtriumPM_Billing;User Id=sa;Password=Your_Strong_Password_123;TrustServerCertificate=True;"
+      ConnectionStrings__IdentityDb: "Server=sqlserver,1433;Database=AtriumPM_Identity;User Id=sa;Password=Your_Strong_Password_123;TrustServerCertificate=True;"
       ConnectionStrings__RabbitMq: "rabbitmq://rabbitmq"
       Jwt__Key: "AtriumPM-Super-Secret-JWT-Key-Must-Be-At-Least-32-Characters-Long!"
       Jwt__Issuer: "AtriumPM.Identity"

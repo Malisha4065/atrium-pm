@@ -9,19 +9,25 @@ namespace AtriumPM.Leasing.API.Application.Services;
 
 public class OccupancyReportService : IOccupancyReportService
 {
-    private readonly string _connectionString;
+    private readonly IConfiguration _configuration;
+    private readonly ITenantConnectionStringResolver _connectionStringResolver;
     private readonly ITenantContext _tenantContext;
 
-    public OccupancyReportService(IConfiguration configuration, ITenantContext tenantContext)
+    public OccupancyReportService(
+        IConfiguration configuration,
+        ITenantConnectionStringResolver connectionStringResolver,
+        ITenantContext tenantContext)
     {
-        _connectionString = configuration.GetConnectionString("LeasingDb")
-            ?? throw new InvalidOperationException("Connection string 'LeasingDb' is not configured.");
+        _configuration = configuration;
+        _connectionStringResolver = connectionStringResolver;
         _tenantContext = tenantContext;
     }
 
     public async Task<OccupancySummaryDto> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqlConnection(_connectionString);
+        var connectionString = ResolveConnectionString();
+
+        await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
         await SetSessionContextAsync(connection);
 
@@ -46,7 +52,9 @@ public class OccupancyReportService : IOccupancyReportService
 
     public async Task<IReadOnlyList<UnitOccupancyDto>> GetUnitOccupancyAsync(CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqlConnection(_connectionString);
+        var connectionString = ResolveConnectionString();
+
+        await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
         await SetSessionContextAsync(connection);
 
@@ -74,5 +82,13 @@ public class OccupancyReportService : IOccupancyReportService
 
         const string sql = "EXEC sp_set_session_context @key=N'TenantId', @value=@TenantId";
         await connection.ExecuteAsync(sql, new { TenantId = _tenantContext.TenantId.ToString() });
+    }
+
+    private string ResolveConnectionString()
+    {
+        var defaultConnection = _configuration.GetConnectionString("LeasingDb")
+            ?? throw new InvalidOperationException("Connection string 'LeasingDb' is not configured.");
+
+        return _connectionStringResolver.ResolveConnectionString(defaultConnection);
     }
 }

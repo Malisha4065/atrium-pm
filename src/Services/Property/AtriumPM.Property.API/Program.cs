@@ -2,6 +2,7 @@ using System.Text;
 using AtriumPM.Property.API.Application.Interfaces;
 using AtriumPM.Property.API.Application.Services;
 using AtriumPM.Property.API.Infrastructure.Data;
+using AtriumPM.Shared.Data;
 using AtriumPM.Shared.Interfaces;
 using AtriumPM.Shared.Middleware;
 using AtriumPM.Shared.Services;
@@ -11,12 +12,22 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<PropertyDbContext>((_, options) =>
-{
-    options.UseSqlServer(builder.Configuration.GetConnectionString("PropertyDb"));
-});
-
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
+builder.Services.AddScoped<ITenantConnectionStringResolver, TenantConnectionStringResolver>();
+builder.Services.AddScoped<TenantSessionContextConnectionInterceptor>();
+
+builder.Services.AddDbContext<PropertyDbContext>((sp, options) =>
+{
+    var defaultConnection = builder.Configuration.GetConnectionString("PropertyDb")
+        ?? throw new InvalidOperationException("Connection string 'PropertyDb' is not configured.");
+
+    var connectionResolver = sp.GetRequiredService<ITenantConnectionStringResolver>();
+    var resolvedConnection = connectionResolver.ResolveConnectionString(defaultConnection);
+
+    options.UseSqlServer(resolvedConnection);
+    options.AddInterceptors(sp.GetRequiredService<TenantSessionContextConnectionInterceptor>());
+});
 
 builder.Services.AddScoped<IBuildingService, BuildingService>();
 builder.Services.AddScoped<IUnitService, UnitService>();
@@ -110,6 +121,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<PropertyDbContext>();
     await db.Database.MigrateAsync();
+    await db.EnsureTenantRlsPoliciesAsync();
 }
 
 app.Run();

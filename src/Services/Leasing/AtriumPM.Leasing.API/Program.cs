@@ -2,6 +2,7 @@ using System.Text;
 using AtriumPM.Leasing.API.Application.Interfaces;
 using AtriumPM.Leasing.API.Application.Services;
 using AtriumPM.Leasing.API.Infrastructure.Data;
+using AtriumPM.Shared.Data;
 using AtriumPM.Shared.Interfaces;
 using AtriumPM.Shared.Middleware;
 using AtriumPM.Shared.Services;
@@ -12,12 +13,22 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<LeasingDbContext>((_, options) =>
-{
-    options.UseSqlServer(builder.Configuration.GetConnectionString("LeasingDb"));
-});
-
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
+builder.Services.AddScoped<ITenantConnectionStringResolver, TenantConnectionStringResolver>();
+builder.Services.AddScoped<TenantSessionContextConnectionInterceptor>();
+
+builder.Services.AddDbContext<LeasingDbContext>((sp, options) =>
+{
+    var defaultConnection = builder.Configuration.GetConnectionString("LeasingDb")
+        ?? throw new InvalidOperationException("Connection string 'LeasingDb' is not configured.");
+
+    var connectionResolver = sp.GetRequiredService<ITenantConnectionStringResolver>();
+    var resolvedConnection = connectionResolver.ResolveConnectionString(defaultConnection);
+
+    options.UseSqlServer(resolvedConnection);
+    options.AddInterceptors(sp.GetRequiredService<TenantSessionContextConnectionInterceptor>());
+});
 builder.Services.AddScoped<ILeaseService, LeaseService>();
 builder.Services.AddScoped<IOccupancyReportService, OccupancyReportService>();
 
@@ -120,6 +131,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<LeasingDbContext>();
     await db.Database.MigrateAsync();
+    await db.EnsureTenantRlsPoliciesAsync();
 }
 
 app.Run();

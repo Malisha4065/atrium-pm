@@ -1,5 +1,6 @@
 using AtriumPM.Identity.API.Application.DTOs;
 using AtriumPM.Identity.API.Application.Interfaces;
+using AtriumPM.Shared.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +11,12 @@ namespace AtriumPM.Identity.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly ITenantContext _tenantContext;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, ITenantContext tenantContext)
     {
         _authService = authService;
+        _tenantContext = tenantContext;
     }
 
     /// <summary>
@@ -25,6 +28,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
+        _tenantContext.TenantId = request.TenantId;
+
         var result = await _authService.LoginAsync(request);
         if (result is null)
             return Unauthorized(new { error = "Invalid email or password." });
@@ -41,6 +46,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
     {
+        _tenantContext.TenantId = request.TenantId;
+
         var result = await _authService.RefreshTokenAsync(request);
         if (result is null)
             return Unauthorized(new { error = "Invalid or expired refresh token." });
@@ -57,6 +64,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Revoke([FromBody] RefreshTokenRequest request)
     {
+        _tenantContext.TenantId = request.TenantId;
+
         var result = await _authService.RevokeTokenAsync(request.RefreshToken, request.TenantId);
         if (!result)
             return BadRequest(new { error = "Token not found or already revoked." });

@@ -2,6 +2,7 @@ using System.Text;
 using AtriumPM.Maintenance.API.Application.Interfaces;
 using AtriumPM.Maintenance.API.Application.Services;
 using AtriumPM.Maintenance.API.Infrastructure.Data;
+using AtriumPM.Shared.Data;
 using AtriumPM.Shared.Interfaces;
 using AtriumPM.Shared.Middleware;
 using AtriumPM.Shared.Services;
@@ -11,12 +12,22 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<MaintenanceDbContext>((_, options) =>
-{
-    options.UseSqlServer(builder.Configuration.GetConnectionString("MaintenanceDb"));
-});
-
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITenantContext, TenantContext>();
+builder.Services.AddScoped<ITenantConnectionStringResolver, TenantConnectionStringResolver>();
+builder.Services.AddScoped<TenantSessionContextConnectionInterceptor>();
+
+builder.Services.AddDbContext<MaintenanceDbContext>((sp, options) =>
+{
+    var defaultConnection = builder.Configuration.GetConnectionString("MaintenanceDb")
+        ?? throw new InvalidOperationException("Connection string 'MaintenanceDb' is not configured.");
+
+    var connectionResolver = sp.GetRequiredService<ITenantConnectionStringResolver>();
+    var resolvedConnection = connectionResolver.ResolveConnectionString(defaultConnection);
+
+    options.UseSqlServer(resolvedConnection);
+    options.AddInterceptors(sp.GetRequiredService<TenantSessionContextConnectionInterceptor>());
+});
 builder.Services.AddScoped<IMaintenanceTicketService, MaintenanceTicketService>();
 builder.Services.AddScoped<IWorkOrderService, WorkOrderService>();
 
@@ -103,6 +114,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<MaintenanceDbContext>();
     await db.Database.MigrateAsync();
+    await db.EnsureTenantRlsPoliciesAsync();
 }
 
 app.Run();
