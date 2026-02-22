@@ -85,7 +85,7 @@
             var token = await ApiClient.LoginAsync(new LoginRequest(loginModel.Email, loginModel.Password, tenantId));
             
             Session.SetSession(tenantId, token.AccessToken, token.RefreshToken);
-            NavigationManager.NavigateTo("/", forceLoad: true);
+            NavigationManager.NavigateTo("/");
         }
         catch (Exception ex)
         {
